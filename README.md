@@ -2,13 +2,14 @@
 
 A monolithic RESTful API for project monitoring.
 
-![Mono Project](./infra-go-mono-project.png)
+<!--![Mono Project](./infra-go-mono-project.png)-->
+<img width="1377" height="709" alt="infra-go-mono-project" src="https://github.com/user-attachments/assets/687fb99f-c7fe-458a-8c25-ecee69cd1291" />
 
 ## Tech Stack
 
 - Golang
 - Echo Framework
-- PostgresSQL
+- PostgreSQL
 - JWT Authentication
 
 ## Features
