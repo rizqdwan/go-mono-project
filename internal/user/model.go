@@ -5,27 +5,31 @@ import (
 )
 
 type User struct {
-	ID        string `json:"id"`
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	Password  string `json:"password"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdateAt  time.Time `json:"update_at"`
+	ID        		int    		`db:"id"`
+	Email     		string 		`db:"email"`
+	Name  				string 		`db:"name"`
+	PasswordHash  string 		`db:"password_hash"`
+	RoleID				int    		`db:"role_id"`
+	DepartmentID  string 		`db:"department_id"`
+	PositionID 		string 		`db:"position_id"`
+	CreatedAt 		time.Time `db:"created_at"`
+	UpdatedAt  		time.Time `db:"updated_at"`
 }
 
 type UserResponse struct {
-	ID        string `json:"id"`
-	Username  string `json:"username"`
-	Email     string `json:"email"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdateAt  time.Time `json:"update_at"`
+    ID           int       `json:"id"`
+    Email        string    `json:"email"`
+    Name         string    `json:"name"`
+    RoleID       int       `json:"role_id"`
+    DepartmentID int     	 `json:"department_id"`
+    PositionID   string    `json:"position_id"`
+    CreatedAt    time.Time `json:"created_at"`
+    UpdatedAt    time.Time `json:"updated_at"`
 }
 
 
-type Repository interface {
-	CreateUser(user User) (User, error)
-	GetUserByID(id string) (User, error)
-	GetUserByEmail(email string) (User, error)
-	UpdateUser(user User) (User, error)
-	DeleteUser(id string) error
+type UserFilter struct {
+    Name  string
+    Email string
+    Role  string
 }

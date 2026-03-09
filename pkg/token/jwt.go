@@ -8,14 +8,27 @@ import (
 	"github.com/rizqdwan/go-mono-project/config"
 )
 
+var (
+	ErrInvalidToken 	= errors.New("Invalid token")
+	ErrExpiredToken 	= errors.New("Token has expired")
+	ErrUnexpectedSign = errors.New("Unexpected signing method")
+)
+
 type Service struct {
-	secret []byte
-	accessTTL time.Duration
+	secret 		 []byte
+	accessTTL  time.Duration
 	refreshTTL time.Duration
 }
 
-type Claims struct {
-	UserID string `json:"user_id"`
+type AccessClaims struct {
+	UserID int64 `json:"user_id"`
+	Email string `json:"email"`
+	Role string  `json:"role"`
+	jwt.RegisteredClaims
+}
+
+type RefreshClaims struct {
+	UserID int64 `json:"user_id"`
 	jwt.RegisteredClaims
 }
 
@@ -27,9 +40,11 @@ func NewJWTService(cfg config.JWTConfig) *Service {
 	}
 }
 
-func (s *Service) GenerateAccessToken(userID string) (string, error) {
-	claims := Claims{
+func (s *Service) GenerateAccessToken(userID int64, email, role string) (string, error) {
+	claims := AccessClaims{
 		UserID: userID,
+		Email : email,
+		Role: role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.accessTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -37,13 +52,29 @@ func (s *Service) GenerateAccessToken(userID string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
 	return token.SignedString(s.secret)
 }
 
-func (s *Service) ValidateToken(tokenStr string) (*Claims, error) {
+func (s *Service) GenerateRefreshToken(userID int64) (string, error) {
+	claims := RefreshClaims{
+		UserID: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.refreshTTL)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	return token.SignedString(s.secret)
+}
+
+
+func (s *Service) ValidateAccessToken(tokenStr string) (*AccessClaims, error) {
 	token, err := jwt.ParseWithClaims(
 		tokenStr,
-		&Claims{},
+		&AccessClaims{},
 		func(t *jwt.Token) (interface{}, error) {
 			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 				return nil, errors.New("unexpected signing method")
@@ -53,13 +84,41 @@ func (s *Service) ValidateToken(tokenStr string) (*Claims, error) {
 	)
 
 	if err != nil {
-		return nil, err
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, ErrExpiredToken
+		}
+		return nil, ErrInvalidToken
 	}
 
-	claims, ok := token.Claims.(*Claims)
+	claims, ok := token.Claims.(*AccessClaims)
 	if !ok || !token.Valid {
-		return nil, errors.New("invalid token")
+		return nil, ErrInvalidToken
 	}
 
+	return claims, nil
+}
+
+func (s *Service) ValidateRefreshToken(tokenStr string) (*RefreshClaims, error) {
+	token, err := jwt.ParseWithClaims(
+		tokenStr,
+		&RefreshClaims{},
+		func(t *jwt.Token) (interface{}, error) {
+			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, ErrUnexpectedSign
+			}
+			return s.secret, nil
+		},
+	)
+	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			return nil, ErrExpiredToken
+		}
+		return nil, ErrInvalidToken
+	}
+
+	claims, ok := token.Claims.(*RefreshClaims)
+	if !ok || !token.Valid {
+		return nil, ErrInvalidToken
+	}
 	return claims, nil
 }

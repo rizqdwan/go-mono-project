@@ -15,12 +15,14 @@ import (
 )
 
 func main() {
-	if err := config.LoadConfig(); err != nil{
+
+	cfg, err := config.LoadConfig()
+	if err != nil{
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	port := strconv.Itoa(config.Cfg.App.Port)
-	log.Printf("Starting server on %s", port)
+	port := strconv.Itoa(cfg.App.Port)
+	log.Printf("Starting %s on port %s", cfg.App.Name, port)
 
 	e := echo.New()
 

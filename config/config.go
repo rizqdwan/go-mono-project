@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -15,8 +16,8 @@ type Config struct{
 }
 
 type AppConfig struct{
-	Name 			string
-	Port 			int
+	Name	string
+	Port	int
 }
 
 type JWTConfig struct{
@@ -26,12 +27,12 @@ type JWTConfig struct{
 }
 
 type DBConfig struct{
-	Host 		 string
-	Port 		 int
-	User 		 string
-	Password string
-	Name 		 string
-	Pool 		 DBPoolConfig
+	Host 		 	string
+	Port 		 	int
+	User 		 	string
+	Password	string
+	Name 		 	string
+	Pool 		 	DBPoolConfig
 }
 
 type DBPoolConfig struct{
@@ -41,53 +42,77 @@ type DBPoolConfig struct{
 	MaxIdletimeConnection  time.Duration
 }
 
-var Cfg *Config
-
-func LoadConfig(envPath ...string) error{
-	
+func LoadConfig(envPath ...string) (*Config, error){
 	path := ".env"
 	if len(envPath) > 0 {
 		path = envPath[0]
 	}
 
-	if err := godotenv.Load(path); err != nil {
-		return err
+	_ = godotenv.Load(path)
+	
+	port, err := strconv.Atoi(os.Getenv("APP_PORT"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid APP_PORT: %w", err)
 	}
-	
-	port, _ := strconv.Atoi(os.Getenv("APP_PORT"))
-	dbPort, _ := strconv.Atoi(os.Getenv("DB_PORT"))
-	accessTTL, _ := time.ParseDuration(os.Getenv("JWT_ACCESS_TTL"))
-	refreshTTL, _ := time.ParseDuration(os.Getenv("JWT_REFRESH_TTL"))
-	maxIdle, _ := strconv.Atoi(os.Getenv("DB_MAX_IDLE"))
-	maxOpen, _ := strconv.Atoi(os.Getenv("DB_MAX_OPEN"))
-	maxLifetime, _ := time.ParseDuration(os.Getenv("DB_MAX_LIFETIME"))
-	maxIdleTime, _ := time.ParseDuration(os.Getenv("DB_MAX_IDLE_TIME"))
-	
-	Cfg = &Config{
+
+	dbPort, err := strconv.Atoi(os.Getenv("DB_PORT"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid DB_PORT: %w", err)
+	}
+
+	accessTTL, err := time.ParseDuration(os.Getenv("JWT_ACCESS_TTL"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid JWT_ACCESS_TTL: %w", err)
+	}
+
+	refreshTTL, err := time.ParseDuration(os.Getenv("JWT_REFRESH_TTL"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid JWT_REFRESH_TTL: %w", err)
+	}
+
+	maxIdle, err := strconv.Atoi(os.Getenv("DB_MAX_IDLE"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid DB_MAX_IDLE: %w", err)
+	}
+
+	maxOpen, err := strconv.Atoi(os.Getenv("DB_MAX_OPEN"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid DB_MAX_OPEN: %w", err)
+	}
+
+	maxLifetime, err := time.ParseDuration(os.Getenv("DB_MAX_LIFETIME"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid DB_MAX_LIFETIME: %w", err)
+	}
+
+	maxIdleTime, err := time.ParseDuration(os.Getenv("DB_MAX_IDLE_TIME"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid DB_MAX_IDLE_TIME: %w", err)
+	}
+
+	return &Config{
 		App: AppConfig{
 			Name: os.Getenv("APP_NAME"),
 			Port: port,
 		},
 		DB: DBConfig{
-			Host: 		os.Getenv("DB_HOST"),
-			Port: 		dbPort,
-			User: 		os.Getenv("DB_USER"),
+			Host:     os.Getenv("DB_HOST"),
+			Port:     dbPort,
+			User:     os.Getenv("DB_USER"),
 			Password: os.Getenv("DB_PASSWORD"),
-			Name: 		os.Getenv("DB_NAME"),
+			Name:     os.Getenv("DB_NAME"),
 			Pool: DBPoolConfig{
-				MaxIdleConnection:      maxIdle,
-				MaxOpenConnection:      maxOpen,
-				MaxLifetimeConnection:  maxLifetime,
-				MaxIdletimeConnection:  maxIdleTime,
+				MaxIdleConnection:     maxIdle,
+				MaxOpenConnection:     maxOpen,
+				MaxLifetimeConnection: maxLifetime,
+				MaxIdletimeConnection: maxIdleTime,
 			},
 		},
 		JWT: JWTConfig{
-			Secret: os.Getenv("JWT_SECRET"),
-			AccessTTL: accessTTL,
+			Secret:     os.Getenv("JWT_SECRET"),
+			AccessTTL:  accessTTL,
 			RefreshTTL: refreshTTL,
 		},
-	}
-
-	return nil
+	}, nil
 }
 
