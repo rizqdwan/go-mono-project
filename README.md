@@ -3,7 +3,7 @@
 A monolithic RESTful API for project monitoring.
 
 <!--![Mono Project](./infra-go-mono-project.png)-->
-<img width="1377" height="709" alt="infra-go-mono-project" src="https://github.com/user-attachments/assets/687fb99f-c7fe-458a-8c25-ecee69cd1291" />
+<img width="1457" height="653" alt="image" src="https://github.com/user-attachments/assets/bb24dde9-d497-4702-a4b1-e9e7b679d3ca" />
 
 ## Tech Stack
 
