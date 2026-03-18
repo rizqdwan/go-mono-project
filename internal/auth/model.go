@@ -3,13 +3,13 @@ package auth
 import "time"
 
 type Authentication struct {
-	ID 						int64 `db:"id"`
-	UserID        int64 `db:"user_id"`
-	RefreshToken 	string `db:"refresh_token"`
-	IsActive      bool	`db:"is_active"`
-	BrowserInfo   string	`db:"browser_info"`
-	CreatedAt     time.Time	`db:"created_at"`
-	LastActivity  time.Time	`db:"last_activity"`
+	ID           int64     `db:"id"`
+	UserID       int64     `db:"user_id"`
+	RefreshToken string    `db:"refresh_token"`
+	IsActive     bool      `db:"is_active"`
+	BrowserInfo  string    `db:"browser_info"`
+	CreatedAt    time.Time `db:"created_at"`
+	LastActivity time.Time `db:"last_activity"`
 }
 
 type LoginRequest struct {
