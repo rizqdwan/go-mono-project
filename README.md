@@ -2,21 +2,29 @@
 
 A monolithic RESTful API for project monitoring.
 
-<!--![Mono Project](./infra-go-mono-project.png)-->
-<img width="1457" height="653" alt="image" src="https://github.com/user-attachments/assets/bb24dde9-d497-4702-a4b1-e9e7b679d3ca" />
+![Mono Project](mono-project.png)
 
 ## Tech Stack
 
-- Golang
-- Echo Framework
-- PostgreSQL
-- JWT Authentication
+- Golang : https://github.com/golang/go
+- PostgreSQL (Database) : https://github.com/postgres/postgres
+
+## Framework & Library
+
+- Echo : https://github.com/labstack/echo
+- Golang Migrate (Database Migration) : https://github.com/golang-migrate/migrate
+- Pgx (PostgresSQL Driver and Toolkit) : https://github.com/jackc/pgx
 
 ## Features
 
-- REST API with Golang (Echo)
 - Monolithic architecture
 - Role-based access control security system
+- JWT Authentication
+- CRUD management such as user, project, and app
+
+## Database Migration
+
+All database migration is in `migrations` folder.
 
 ## Status
 
