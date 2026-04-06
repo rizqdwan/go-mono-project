@@ -9,47 +9,47 @@ import (
 	"github.com/joho/godotenv"
 )
 
-type Config struct{
+type Config struct {
 	App AppConfig
-	DB 	DBConfig
+	DB  DBConfig
 	JWT JWTConfig
 }
 
-type AppConfig struct{
-	Name	string
-	Port	int
+type AppConfig struct {
+	Name string
+	Port int
 }
 
-type JWTConfig struct{
-	Secret 		 string
+type JWTConfig struct {
+	Secret     string
 	AccessTTL  time.Duration
 	RefreshTTL time.Duration
 }
 
-type DBConfig struct{
-	Host 		 	string
-	Port 		 	int
-	User 		 	string
-	Password	string
-	Name 		 	string
-	Pool 		 	DBPoolConfig
+type DBConfig struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
+	Name     string
+	Pool     DBPoolConfig
 }
 
-type DBPoolConfig struct{
-	MaxIdleConnection      int
-	MaxOpenConnection      int
-	MaxLifetimeConnection  time.Duration
-	MaxIdletimeConnection  time.Duration
+type DBPoolConfig struct {
+	MaxIdleConnection     int
+	MaxOpenConnection     int
+	MaxLifetimeConnection time.Duration
+	MaxIdletimeConnection time.Duration
 }
 
-func LoadConfig(envPath ...string) (*Config, error){
+func LoadConfig(envPath ...string) (*Config, error) {
 	path := ".env"
 	if len(envPath) > 0 {
 		path = envPath[0]
 	}
 
 	_ = godotenv.Load(path)
-	
+
 	port, err := strconv.Atoi(os.Getenv("APP_PORT"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid APP_PORT: %w", err)
@@ -115,4 +115,3 @@ func LoadConfig(envPath ...string) (*Config, error){
 		},
 	}, nil
 }
-
