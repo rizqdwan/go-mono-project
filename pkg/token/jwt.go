@@ -9,21 +9,22 @@ import (
 )
 
 var (
-	ErrInvalidToken 	= errors.New("Invalid token")
-	ErrExpiredToken 	= errors.New("Token has expired")
+	ErrInvalidToken   = errors.New("Invalid token")
+	ErrExpiredToken   = errors.New("Token has expired")
 	ErrUnexpectedSign = errors.New("Unexpected signing method")
+	ErrMalformedToken = errors.New("Malformed token")
 )
 
 type Service struct {
-	secret 		 []byte
+	secret     []byte
 	accessTTL  time.Duration
 	refreshTTL time.Duration
 }
 
 type AccessClaims struct {
-	UserID int64 `json:"user_id"`
-	Email string `json:"email"`
-	Role string  `json:"role"`
+	UserID int64  `json:"user_id"`
+	Email  string `json:"email"`
+	Role   string `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -40,11 +41,19 @@ func NewJWTService(cfg config.JWTConfig) *Service {
 	}
 }
 
+func (s *Service) AccessTTL() time.Duration {
+	return s.accessTTL
+}
+
+func (s *Service) RefreshTTL() time.Duration {
+	return s.refreshTTL
+}
+
 func (s *Service) GenerateAccessToken(userID int64, email, role string) (string, error) {
 	claims := AccessClaims{
 		UserID: userID,
-		Email : email,
-		Role: role,
+		Email:  email,
+		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.accessTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -70,7 +79,6 @@ func (s *Service) GenerateRefreshToken(userID int64) (string, error) {
 	return token.SignedString(s.secret)
 }
 
-
 func (s *Service) ValidateAccessToken(tokenStr string) (*AccessClaims, error) {
 	token, err := jwt.ParseWithClaims(
 		tokenStr,
@@ -86,6 +94,9 @@ func (s *Service) ValidateAccessToken(tokenStr string) (*AccessClaims, error) {
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
 			return nil, ErrExpiredToken
+		}
+		if errors.Is(err, jwt.ErrTokenMalformed) {
+			return nil, ErrMalformedToken
 		}
 		return nil, ErrInvalidToken
 	}
