@@ -1,6 +1,10 @@
 package auth
 
-import "time"
+import (
+	"time"
+
+	"github.com/rizqdwan/go-mono-project/internal/user"
+)
 
 type Authentication struct {
 	ID           int64     `db:"id"`
@@ -13,15 +17,15 @@ type Authentication struct {
 }
 
 type LoginRequest struct {
-	Email    string `json:"email" validate:"required, email"`
-	Password string `json:"password" validate:"required, min=8"`
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required,min=8"`
 }
 
 type RegisterRequest struct {
 	Name            string `json:"name"             validate:"required"`
 	Email           string `json:"email"            validate:"required,email"`
 	Password        string `json:"password"         validate:"required,min=8"`
-	ConfirmPassword string `json:"confirm_password" validate:"required"`
+	ConfirmPassword string `json:"confirm_password" validate:"required,eqfield=Password"`
 	Role            string `json:"role"             validate:"required"`
 	Department      string `json:"department"       validate:"required"`
 	Position        string `json:"position"         validate:"required"`
@@ -34,6 +38,8 @@ type TokenResponse struct {
 	ExpiresIn    int64  `json:"expires_in"`
 }
 
+type RegisterResponse = user.UserResponse
+
 type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token" validate:"required"`
 }
@@ -41,7 +47,7 @@ type RefreshTokenRequest struct {
 type ChangePasswordRequest struct {
 	OldPassword     string `json:"old_password"     validate:"required"`
 	NewPassword     string `json:"new_password"     validate:"required,min=8"`
-	ConfirmPassword string `json:"confirm_password" validate:"required"`
+	ConfirmPassword string `json:"confirm_password" validate:"required,eqfield=NewPassword"`
 }
 
 type ChangePasswordResponse struct {

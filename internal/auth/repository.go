@@ -4,18 +4,20 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 )
 
 type Repository interface {
 	FindSessionByRefreshToken(ctx context.Context, refreshToken string) (*Authentication, error)
-	FindActiveSessionByUserID(ctx context.Context, userID int64) (*Authentication, error)
+	FindActiveSessionsByUserID(ctx context.Context, userID int64) ([]Authentication, error)
 	FindSessionByUserAndBrowser(ctx context.Context, userID int64, browserInfo string) (*Authentication, error)
 	CreateSession(ctx context.Context, session *Authentication) error
 	UpdateSession(ctx context.Context, session *Authentication) error
 	DeactivateSession(ctx context.Context, id int64) error
 	DeactivateAllUserSessions(ctx context.Context, userID int64) error
+	FindExpiredActiveSessions(ctx context.Context, cutoff time.Time, limit int) ([]Authentication, error)
+	DeleteInactiveSessionsOlderThan(ctx context.Context, before time.Time) error
 }
-
 
 type repository struct {
 	db *sql.DB
@@ -34,14 +36,31 @@ func (r *repository) FindSessionByRefreshToken(ctx context.Context, refreshToken
 	return r.scanSession(r.db.QueryRowContext(ctx, query, refreshToken))
 }
 
-func (r *repository) FindActiveSessionByUserID(ctx context.Context, userID int64) (*Authentication, error) {
+func (r *repository) FindActiveSessionsByUserID(ctx context.Context, userID int64) ([]Authentication, error) {
 	query := `
 		SELECT id, user_id, refresh_token, is_active, browser_info, created_at, last_activity
 		FROM authentication_sessions
 		WHERE user_id = $1 AND is_active = true
-		LIMIT 1
+		ORDER BY created_at ASC
 	`
-	return r.scanSession(r.db.QueryRowContext(ctx, query, userID))
+	rows, err := r.db.QueryContext(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []Authentication
+	for rows.Next() {
+		var s Authentication
+		if err := rows.Scan(
+			&s.ID, &s.UserID, &s.RefreshToken,
+			&s.IsActive, &s.BrowserInfo, &s.CreatedAt, &s.LastActivity,
+		); err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, s)
+	}
+	return sessions, rows.Err()
 }
 
 func (r *repository) FindSessionByUserAndBrowser(ctx context.Context, userID int64, browserInfo string) (*Authentication, error) {
@@ -87,7 +106,6 @@ func (r *repository) UpdateSession(ctx context.Context, session *Authentication)
 	).Scan(&session.LastActivity)
 }
 
-
 func (r *repository) DeactivateSession(ctx context.Context, id int64) error {
 	query := `
 		UPDATE authentication_sessions
@@ -107,6 +125,45 @@ func (r *repository) DeactivateAllUserSessions(ctx context.Context, userID int64
 		WHERE user_id = $1 AND is_active = true
 	`
 	_, err := r.db.ExecContext(ctx, query, userID)
+	return err
+}
+
+func (r *repository) FindExpiredActiveSessions(ctx context.Context, cutoff time.Time, limit int) ([]Authentication, error) {
+	query := `
+		SELECT id, user_id, refresh_token, is_active, browser_info, created_at, last_activity
+		FROM authentication_sessions
+		WHERE is_active = true
+		  AND last_activity < $1
+		ORDER BY last_activity ASC
+		LIMIT $2
+	`
+	rows, err := r.db.QueryContext(ctx, query, cutoff, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var sessions []Authentication
+	for rows.Next() {
+		var s Authentication
+		if err := rows.Scan(
+			&s.ID, &s.UserID, &s.RefreshToken,
+			&s.IsActive, &s.BrowserInfo, &s.CreatedAt, &s.LastActivity,
+		); err != nil {
+			return nil, err
+		}
+		sessions = append(sessions, s)
+	}
+	return sessions, rows.Err()
+}
+
+func (r *repository) DeleteInactiveSessionsOlderThan(ctx context.Context, before time.Time) error {
+	query := `
+		DELETE FROM authentication_sessions
+		WHERE is_active = false
+		  AND last_activity < $1
+	`
+	_, err := r.db.ExecContext(ctx, query, before)
 	return err
 }
 

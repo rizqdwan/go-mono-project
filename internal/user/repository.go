@@ -4,16 +4,19 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 )
 
 type Repository interface {
 	FindByEmail(ctx context.Context, email string) (*User, error)
 	FindByID(ctx context.Context, id int64) (*User, error)
 	CreateUser(ctx context.Context, u *User) error
-	UpdatePassword(ctx context.Context, userID int64, hashedPassword string) error
+	UpdatePassword(ctx context.Context, userID int64, hashedPassword string) (time.Time, error)
 	FindRoleByName(ctx context.Context, name string) (int64, error)
+	FindRoleNameByID(ctx context.Context, roleID int64) (string, error)
 	FindDepartmentByLabel(ctx context.Context, label string) (int64, error)
-	FindPositionByName(ctx context.Context, name string) (string, error)
+	FindPositionByLabel(ctx context.Context, label string) (string, error)
+	FindDepartmentLabelByID(ctx context.Context, id int64) (string, error)
 }
 
 type repository struct {
@@ -26,21 +29,21 @@ func NewRepository(db *sql.DB) Repository {
 
 func (r *repository) FindByEmail(ctx context.Context, email string) (*User, error) {
 	query := `
-		SELECT id, email, name, password_hash, role_id, department_id, position_id,
-		       created_at, updated_at
-		FROM users
-		WHERE email = $1
-	`
+        SELECT id, email, name, password_hash, role_id, department_id, position_id,
+               is_active, created_at, updated_at
+        FROM users
+        WHERE email = $1
+    `
 	return r.scanUser(r.db.QueryRowContext(ctx, query, email))
 }
 
 func (r *repository) FindByID(ctx context.Context, id int64) (*User, error) {
 	query := `
-		SELECT id, email, name, password_hash, role_id, department_id, position_id,
-		       created_at, updated_at
-		FROM users
-		WHERE id = $1
-	`
+        SELECT id, email, name, password_hash, role_id, department_id, position_id,
+               is_active, created_at, updated_at
+        FROM users
+        WHERE id = $1
+    `
 	return r.scanUser(r.db.QueryRowContext(ctx, query, id))
 }
 
@@ -61,17 +64,21 @@ func (r *repository) CreateUser(ctx context.Context, u *User) error {
 	).Scan(&u.ID, &u.CreatedAt, &u.UpdatedAt)
 }
 
-func (r *repository) UpdatePassword(ctx context.Context, userID int64, hashedPassword string) error {
+func (r *repository) UpdatePassword(ctx context.Context, userID int64, hashedPassword string) (time.Time, error) {
 	query := `
 		UPDATE users
 		SET password_hash = $1,
 		    updated_at    = NOW()
 		WHERE id = $2
+		RETURNING updated_at
 	`
-	_, err := r.db.ExecContext(ctx, query, hashedPassword, userID)
-	return err
+	var updatedAt time.Time
+	err := r.db.QueryRowContext(ctx, query, hashedPassword, userID).Scan(&updatedAt)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return updatedAt, nil
 }
-
 
 func (r *repository) FindRoleByName(ctx context.Context, name string) (int64, error) {
 	query := `
@@ -87,6 +94,19 @@ func (r *repository) FindRoleByName(ctx context.Context, name string) (int64, er
 	return id, err
 }
 
+func (r *repository) FindRoleNameByID(ctx context.Context, roleID int64) (string, error) {
+	query := `
+        SELECT name FROM user_roles
+        WHERE id = $1
+        LIMIT 1
+    `
+	var name string
+	err := r.db.QueryRowContext(ctx, query, roleID).Scan(&name)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrRoleNotFound
+	}
+	return name, err
+}
 
 func (r *repository) FindDepartmentByLabel(ctx context.Context, label string) (int64, error) {
 	query := `
@@ -102,18 +122,32 @@ func (r *repository) FindDepartmentByLabel(ctx context.Context, label string) (i
 	return id, err
 }
 
-func (r *repository) FindPositionByName(ctx context.Context, name string) (string, error) {
+func (r *repository) FindPositionByLabel(ctx context.Context, label string) (string, error) {
 	query := `
-		SELECT id FROM user_positions
-		WHERE name = $1
-		LIMIT 1
-	`
+        SELECT id FROM user_positions
+        WHERE id = $1
+        LIMIT 1
+    `
 	var id string
-	err := r.db.QueryRowContext(ctx, query, name).Scan(&id)
+	err := r.db.QueryRowContext(ctx, query, label).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrPositionNotFound
 	}
 	return id, err
+}
+
+func (r *repository) FindDepartmentLabelByID(ctx context.Context, id int64) (string, error) {
+	query := `
+		SELECT label FROM departments
+		WHERE id = $1
+		LIMIT 1
+	`
+	var label string
+	err := r.db.QueryRowContext(ctx, query, id).Scan(&label)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrDepartmentNotFound
+	}
+	return label, err
 }
 
 func (r *repository) scanUser(row *sql.Row) (*User, error) {
@@ -126,6 +160,7 @@ func (r *repository) scanUser(row *sql.Row) (*User, error) {
 		&u.RoleID,
 		&u.DepartmentID,
 		&u.PositionID,
+		&u.IsActive,
 		&u.CreatedAt,
 		&u.UpdatedAt,
 	)
