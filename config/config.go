@@ -48,7 +48,9 @@ func LoadConfig(envPath ...string) (*Config, error) {
 		path = envPath[0]
 	}
 
-	_ = godotenv.Load(path)
+	if err := godotenv.Load(path); err != nil {
+		return nil, fmt.Errorf("failed to load .env file: %w", err)
+	}
 
 	port, err := strconv.Atoi(os.Getenv("APP_PORT"))
 	if err != nil {
