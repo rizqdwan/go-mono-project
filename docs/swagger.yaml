@@ -1,4 +1,331 @@
+definitions:
+  github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any:
+    properties:
+      data: {}
+      errors:
+        items:
+          type: string
+        type: array
+      message:
+        type: string
+      metaData:
+        additionalProperties: {}
+        type: object
+      status:
+        type: integer
+    type: object
+  github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_auth_ChangePasswordResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_auth.ChangePasswordResponse'
+      errors:
+        items:
+          type: string
+        type: array
+      message:
+        type: string
+      metaData:
+        additionalProperties: {}
+        type: object
+      status:
+        type: integer
+    type: object
+  github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_auth_RegisterResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_auth.RegisterResponse'
+      errors:
+        items:
+          type: string
+        type: array
+      message:
+        type: string
+      metaData:
+        additionalProperties: {}
+        type: object
+      status:
+        type: integer
+    type: object
+  github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_auth_TokenResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_auth.TokenResponse'
+      errors:
+        items:
+          type: string
+        type: array
+      message:
+        type: string
+      metaData:
+        additionalProperties: {}
+        type: object
+      status:
+        type: integer
+    type: object
+  internal_auth.ChangePasswordRequest:
+    properties:
+      confirm_password:
+        type: string
+      new_password:
+        minLength: 8
+        type: string
+      old_password:
+        type: string
+    required:
+    - confirm_password
+    - new_password
+    - old_password
+    type: object
+  internal_auth.ChangePasswordResponse:
+    properties:
+      email:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  internal_auth.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  internal_auth.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  internal_auth.RegisterRequest:
+    properties:
+      confirm_password:
+        type: string
+      department:
+        type: string
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        minLength: 8
+        type: string
+      position:
+        type: string
+      role:
+        type: string
+    required:
+    - confirm_password
+    - department
+    - email
+    - name
+    - password
+    - position
+    - role
+    type: object
+  internal_auth.RegisterResponse:
+    properties:
+      created_at:
+        type: string
+      department:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      position:
+        type: string
+      role:
+        type: string
+    type: object
+  internal_auth.TokenResponse:
+    properties:
+      access_token:
+        type: string
+      expires_in:
+        type: integer
+      refresh_token:
+        type: string
+      token_type:
+        type: string
+    type: object
 info:
   contact: {}
-paths: {}
+paths:
+  /:
+    get:
+      description: Check if the API is running
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Welcome
+      tags:
+      - Health
+  /auth/change-password:
+    put:
+      consumes:
+      - application/json
+      description: Change the authenticated user's password
+      parameters:
+      - description: Change Password Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.ChangePasswordRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_auth_ChangePasswordResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+      security:
+      - BearerAuth: []
+      summary: Change password
+      tags:
+      - Auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Invalidate the provided refresh token
+      parameters:
+      - description: Refresh Token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+      security:
+      - BearerAuth: []
+      summary: Logout user
+      tags:
+      - Auth
+  /auth/renew:
+    post:
+      consumes:
+      - application/json
+      description: Generate a new access token using a valid refresh token
+      parameters:
+      - description: Refresh Token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_auth_TokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+      summary: Renew access token
+      tags:
+      - Auth
+  /auth/signin:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user and return access + refresh token
+      parameters:
+      - description: Login Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_auth_TokenResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+      summary: Login user
+      tags:
+      - Auth
+  /auth/signup:
+    post:
+      consumes:
+      - application/json
+      description: Create a new user account (ProjectAdmin only)
+      parameters:
+      - description: Register Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_auth.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_auth_RegisterResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+      security:
+      - BearerAuth: []
+      summary: Register new user
+      tags:
+      - Auth
 swagger: "2.0"
