@@ -8,7 +8,6 @@ import (
 	"github.com/rizqdwan/go-mono-project/pkg/token"
 )
 
-
 func AuthMiddleware(tokenService *token.Service) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
@@ -34,12 +33,11 @@ func AuthMiddleware(tokenService *token.Service) echo.MiddlewareFunc {
 			c.Set("role", claims.Role)
 
 			return next(c)
-			}
 		}
+	}
 }
 
-
-func RoleMiddleware(allowedRoles ...string) echo.MiddlewareFunc {
+func RolesMiddleware(allowedRoles ...string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {
 			role, ok := c.Get("role").(string)

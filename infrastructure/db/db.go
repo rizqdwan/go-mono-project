@@ -15,7 +15,7 @@ type Database struct {
 }
 
 func NewDatabase(cfg config.DBConfig) (*Database, error) {
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", 
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%d/%s",
 		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Name)
 
 	db, err := sql.Open("pgx", dsn)
