@@ -17,6 +17,7 @@ type Repository interface {
 	FindDepartmentByLabel(ctx context.Context, label string) (int64, error)
 	FindPositionByLabel(ctx context.Context, label string) (string, error)
 	FindDepartmentLabelByID(ctx context.Context, id int64) (string, error)
+	FindUserDetailsByID(ctx context.Context, id int64) (*UserDetailsResponse, error)
 }
 
 type repository struct {
@@ -148,6 +149,37 @@ func (r *repository) FindDepartmentLabelByID(ctx context.Context, id int64) (str
 		return "", ErrDepartmentNotFound
 	}
 	return label, err
+}
+
+func (r *repository) FindUserDetailsByID(ctx context.Context, userID int64) (*UserDetailsResponse, error) {
+	query := `
+        SELECT u.id, u.email, u.name, p.name , d.label, d.name, p.name , u.created_at
+        FROM users u
+        JOIN user_roles ur ON ur.id = u.role_id
+        JOIN departments d ON d.id = u.department_id
+        JOIN positions p ON p.id = u.position_id
+        WHERE u.id = $1
+        LIMIT 1
+      `
+	var resp UserDetailsResponse
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(
+		&resp.ID,
+		&resp.Email,
+		&resp.Name,
+		&resp.Role,
+		&resp.Department.Label,
+		&resp.Department.Name,
+		&resp.Position,
+		&resp.CreatedAt,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &resp, nil
 }
 
 func (r *repository) scanUser(row *sql.Row) (*User, error) {
