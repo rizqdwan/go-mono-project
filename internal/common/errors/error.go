@@ -44,3 +44,19 @@ func UnauthorizedError(message string, err error) AppError {
 		Err:      err,
 	}
 }
+
+func ForbiddenError(message string, err error) AppError {
+	return AppError{
+		Message:  message,
+		HttpCode: http.StatusForbidden,
+		Err:      err,
+	}
+}
+
+func ConflictError(message string, err error) AppError {
+	return AppError{
+		Message:  message,
+		HttpCode: http.StatusConflict,
+		Err:      err,
+	}
+}
