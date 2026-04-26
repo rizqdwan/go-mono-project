@@ -43,14 +43,3 @@ type RegisterResponse = user.UserResponse
 type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token" validate:"required"`
 }
-
-type ChangePasswordRequest struct {
-	OldPassword     string `json:"old_password"     validate:"required"`
-	NewPassword     string `json:"new_password"     validate:"required,min=8"`
-	ConfirmPassword string `json:"confirm_password" validate:"required,eqfield=NewPassword"`
-}
-
-type ChangePasswordResponse struct {
-	Email     string    `json:"email"`
-	UpdatedAt time.Time `json:"updated_at"`
-}

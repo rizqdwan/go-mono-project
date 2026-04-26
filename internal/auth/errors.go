@@ -2,10 +2,6 @@ package auth
 
 import (
 	"errors"
-	"net/http"
-
-	"github.com/labstack/echo/v5"
-	"github.com/rizqdwan/go-mono-project/pkg/response"
 )
 
 var (
@@ -23,22 +19,3 @@ var (
 	ErrInvalidRefreshToken    = errors.New("invalid refresh token, please login again")
 	ErrUserInactive           = errors.New("account is inactive")
 )
-
-func mapError(c *echo.Context, err error) error {
-	switch err {
-	case ErrInvalidCredentials, ErrIncorrectPassword:
-		return response.Error(c, http.StatusUnauthorized, err.Error(), nil)
-	case ErrEmailAlreadyRegistered, ErrSessionConflict:
-		return response.Error(c, http.StatusConflict, err.Error(), nil)
-	case ErrPasswordMismatch, ErrSamePassword:
-		return response.Error(c, http.StatusUnprocessableEntity, err.Error(), nil)
-	case ErrSessionNotFound, ErrSessionInactive,
-		ErrRefreshTokenExpired, ErrInvalidRefreshToken,
-		ErrBrowserMismatch:
-		return response.Error(c, http.StatusUnauthorized, err.Error(), nil)
-	case ErrUserInactive, ErrAccountDisabled:
-		return response.Error(c, http.StatusForbidden, err.Error(), nil)
-	default:
-		return response.Error(c, http.StatusInternalServerError, "internal server error", nil)
-	}
-}
