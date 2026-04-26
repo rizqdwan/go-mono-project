@@ -5,12 +5,18 @@ import (
 	_ "github.com/rizqdwan/go-mono-project/docs"
 	"github.com/rizqdwan/go-mono-project/infrastructure/http/middleware"
 	"github.com/rizqdwan/go-mono-project/internal/auth"
+	"github.com/rizqdwan/go-mono-project/internal/user"
 	"github.com/rizqdwan/go-mono-project/internal/user/role"
 	"github.com/rizqdwan/go-mono-project/pkg/token"
 	echoSwagger "github.com/swaggo/echo-swagger/v2"
 )
 
-func SetupRouter(e *echo.Echo, tokenSvc *token.Service, authHandler *auth.Handler) {
+type Handlers struct {
+	Auth *auth.Handler
+	User *user.Handler
+}
+
+func SetupRouter(e *echo.Echo, tokenSvc *token.Service, h *Handlers) {
 
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
@@ -19,21 +25,31 @@ func SetupRouter(e *echo.Echo, tokenSvc *token.Service, authHandler *auth.Handle
 	welcomeHandler := NewWelcomeHandler()
 	api.GET("", welcomeHandler.Welcome)
 
-	registerAuthRoutes(api, tokenSvc, authHandler)
-
-	// registerUserRoutes(api, tokenSvc, userHandler)
+	registerAuthRoutes(api, tokenSvc, h.Auth)
+	registerUserRoutes(api, tokenSvc, h.User)
 	// registerDepartmentRoutes(api, tokenSvc, DepartmentHandler)
 	// registerGroupRoutes(api, tokenSvc, GroupHandler)
 }
 
-func registerAuthRoutes(api *echo.Group, tokenSvc *token.Service, h *auth.Handler) {
+func registerAuthRoutes(api *echo.Group, tokenSvc *token.Service, a *auth.Handler) {
 	authGroup := api.Group("/auth")
 
-	authGroup.POST("/signin", h.Login)
-	authGroup.POST("/renew", h.RenewToken)
-	authGroup.POST("/logout", h.Logout)
+	authGroup.POST("/signin", a.Login)
+	authGroup.POST("/renew", a.RenewToken)
+	authGroup.POST("/logout", a.Logout)
 
 	protected := authGroup.Group("", middleware.AuthMiddleware(tokenSvc))
-	protected.PUT("/change-password", h.ChangePassword)
-	protected.POST("/signup", h.Register, middleware.RolesMiddleware(role.ProjectAdmin))
+	protected.POST("/signup", a.Register, middleware.RolesMiddleware(role.ProjectAdmin))
+}
+
+func registerUserRoutes(api *echo.Group, tokenSvc *token.Service, u *user.Handler) {
+	userGroup := api.Group("/user")
+
+	protected := userGroup.Group("", middleware.AuthMiddleware(tokenSvc))
+	protected.GET("/current", u.UserDetails)
+	protected.PUT("/change-password", u.ChangePassword)
+
+	admin := userGroup.Group("", middleware.AuthMiddleware(tokenSvc), middleware.RolesMiddleware(role.ProjectAdmin))
+	admin.PUT(":id/reset-password", u.ResetPassword)
+
 }
