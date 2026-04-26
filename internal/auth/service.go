@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rizqdwan/go-mono-project/infrastructure/security"
+	commonErrors "github.com/rizqdwan/go-mono-project/internal/common/errors"
 	"github.com/rizqdwan/go-mono-project/internal/user"
 	"github.com/rizqdwan/go-mono-project/pkg/token"
 )
@@ -16,7 +17,6 @@ type Service interface {
 	Register(ctx context.Context, req RegisterRequest) (*user.UserResponse, error)
 	Logout(ctx context.Context, refreshToken string) error
 	RenewToken(ctx context.Context, req RefreshTokenRequest, browserInfo string) (*TokenResponse, error)
-	ChangePassword(ctx context.Context, userID int64, req ChangePasswordRequest) (ChangePasswordResponse, error)
 }
 
 const maxActiveRefreshTokens = 1
@@ -42,40 +42,40 @@ func NewService(authRepo Repository, userRepo user.Repository, tokenSvc *token.S
 
 func (s *service) Register(ctx context.Context, req RegisterRequest) (*user.UserResponse, error) {
 	if req.Password != req.ConfirmPassword {
-		return nil, ErrPasswordMismatch
+		return nil, commonErrors.InvariantError(ErrPasswordMismatch.Error(), ErrPasswordMismatch)
 	}
 
 	email := strings.ToLower(strings.TrimSpace(req.Email))
 
 	u, err := s.userRepo.FindByEmail(ctx, email)
 	if err == nil && u != nil {
-		return nil, ErrEmailAlreadyRegistered
+		return nil, commonErrors.ConflictError(ErrEmailAlreadyRegistered.Error(), ErrEmailAlreadyRegistered)
 	}
 	if err != nil && !errors.Is(err, user.ErrUserNotFound) {
-		return nil, err
+		return nil, commonErrors.InternalServerError("Failed to check existing email", nil)
 	}
 
 	roleID, err := s.userRepo.FindRoleByName(ctx, req.Role)
 	if err != nil {
 		if errors.Is(err, user.ErrRoleNotFound) {
-			return nil, user.ErrRoleNotFound
+			return nil, commonErrors.NotFoundError(user.ErrRoleNotFound.Error(), err)
 		}
-		return nil, err
+		return nil, commonErrors.InternalServerError("failed to find role", err)
 	}
 
 	deptID, err := s.userRepo.FindDepartmentByLabel(ctx, req.Department)
 	if err != nil {
-		return nil, user.ErrDepartmentNotFound
+		return nil, commonErrors.NotFoundError(user.ErrDepartmentNotFound.Error(), err)
 	}
 
 	posID, err := s.userRepo.FindPositionByLabel(ctx, req.Position)
 	if err != nil {
-		return nil, user.ErrPositionNotFound
+		return nil, commonErrors.NotFoundError(user.ErrPositionNotFound.Error(), err)
 	}
 
 	hashed, err := s.passwordSvc.Hash(req.Password)
 	if err != nil {
-		return nil, err
+		return nil, commonErrors.InternalServerError("failed to hash password", err)
 	}
 
 	u = &user.User{
@@ -89,7 +89,7 @@ func (s *service) Register(ctx context.Context, req RegisterRequest) (*user.User
 	}
 
 	if err := s.userRepo.CreateUser(ctx, u); err != nil {
-		return nil, err
+		return nil, commonErrors.InternalServerError("failed to create user", err)
 	}
 
 	return &user.UserResponse{
@@ -107,44 +107,44 @@ func (s *service) Login(ctx context.Context, req LoginRequest, browserInfo strin
 	u, err := s.userRepo.FindByEmail(ctx, req.Email)
 	if err != nil {
 		if errors.Is(err, user.ErrUserNotFound) {
-			return nil, ErrInvalidCredentials
+			return nil, commonErrors.UnauthorizedError(ErrInvalidCredentials.Error(), ErrInvalidCredentials)
 		}
-		return nil, err
+		return nil, commonErrors.InternalServerError("failed to fetch user", err)
 	}
 
 	if !u.IsActive {
-		return nil, ErrUserInactive
+		return nil, commonErrors.ForbiddenError(ErrUserInactive.Error(), ErrUserInactive)
 	}
 
 	match, err := s.passwordSvc.Compare(req.Password, u.PasswordHash)
 	if err != nil || !match {
-		return nil, ErrInvalidCredentials
+		return nil, commonErrors.UnauthorizedError(ErrPasswordMismatch.Error(), ErrPasswordMismatch)
 	}
 
 	activeSessions, err := s.authRepo.FindActiveSessionsByUserID(ctx, u.ID)
 	if err != nil {
-		return nil, err
+		return nil, commonErrors.InternalServerError("failed to fetch active sessions", err)
 	}
 
 	for _, session := range activeSessions {
 		if session.BrowserInfo != browserInfo {
-			return nil, ErrSessionConflict
+			return nil, commonErrors.ConflictError(ErrSessionInactive.Error(), ErrSessionInactive)
 		}
 	}
 
 	roleName, err := s.userRepo.FindRoleNameByID(ctx, u.RoleID)
 	if err != nil {
-		return nil, err
+		return nil, commonErrors.InternalServerError("failed to fetch role name", err)
 	}
 
 	accessToken, err := s.tokenSvc.GenerateAccessToken(u.ID, u.Email, roleName)
 	if err != nil {
-		return nil, err
+		return nil, commonErrors.InternalServerError("failed to generate access token", err)
 	}
 
 	refreshToken, err := s.tokenSvc.GenerateRefreshToken(u.ID)
 	if err != nil {
-		return nil, err
+		return nil, commonErrors.InternalServerError("failed to generate refresh token", err)
 	}
 
 	if err := s.enforceMaxActiveSessions(ctx, u.ID); err != nil {
@@ -153,7 +153,7 @@ func (s *service) Login(ctx context.Context, req LoginRequest, browserInfo strin
 
 	auth, findErr := s.authRepo.FindSessionByUserAndBrowser(ctx, u.ID, browserInfo)
 	if findErr != nil && !errors.Is(findErr, ErrSessionNotFound) {
-		return nil, findErr
+		return nil, commonErrors.InternalServerError("failed to find session", findErr)
 	}
 
 	if auth == nil {
@@ -164,13 +164,13 @@ func (s *service) Login(ctx context.Context, req LoginRequest, browserInfo strin
 			BrowserInfo:  browserInfo,
 		}
 		if err := s.authRepo.CreateSession(ctx, newSession); err != nil {
-			return nil, err
+			return nil, commonErrors.InternalServerError("failed to create session", err)
 		}
 	} else {
 		auth.RefreshToken = refreshToken
 		auth.IsActive = true
 		if err := s.authRepo.UpdateSession(ctx, auth); err != nil {
-			return nil, err
+			return nil, commonErrors.InternalServerError("failed to update session", err)
 		}
 	}
 
@@ -185,11 +185,11 @@ func (s *service) Login(ctx context.Context, req LoginRequest, browserInfo strin
 func (s *service) Logout(ctx context.Context, refreshToken string) error {
 	auth, err := s.authRepo.FindSessionByRefreshToken(ctx, refreshToken)
 	if err != nil {
-		return ErrSessionNotFound
+		return commonErrors.UnauthorizedError(ErrSessionNotFound.Error(), ErrSessionNotFound)
 	}
 
 	if err := s.authRepo.DeactivateSession(ctx, auth.ID); err != nil {
-		return ErrSessionNotFound
+		return commonErrors.InternalServerError("failed to deactivate session", err)
 	}
 
 	return nil
@@ -198,16 +198,16 @@ func (s *service) Logout(ctx context.Context, refreshToken string) error {
 func (s *service) RenewToken(ctx context.Context, req RefreshTokenRequest, browserInfo string) (*TokenResponse, error) {
 	auth, err := s.authRepo.FindSessionByRefreshToken(ctx, req.RefreshToken)
 	if err != nil {
-		return nil, ErrSessionNotFound
+		return nil, commonErrors.UnauthorizedError(ErrSessionNotFound.Error(), ErrSessionNotFound)
 	}
 
 	if !auth.IsActive {
-		return nil, ErrSessionInactive
+		return nil, commonErrors.UnauthorizedError(ErrSessionInactive.Error(), ErrSessionInactive)
 	}
 
 	if auth.BrowserInfo != browserInfo {
 		_ = s.authRepo.DeactivateSession(ctx, auth.ID)
-		return nil, ErrBrowserMismatch
+		return nil, commonErrors.UnauthorizedError(ErrBrowserMismatch.Error(), ErrBrowserMismatch)
 	}
 
 	claims, err := s.tokenSvc.ValidateRefreshToken(req.RefreshToken)
@@ -215,35 +215,35 @@ func (s *service) RenewToken(ctx context.Context, req RefreshTokenRequest, brows
 		_ = s.authRepo.DeactivateSession(ctx, auth.ID)
 		switch {
 		case errors.Is(err, token.ErrExpiredToken):
-			return nil, ErrRefreshTokenExpired
+			return nil, commonErrors.UnauthorizedError(ErrRefreshTokenExpired.Error(), ErrRefreshTokenExpired)
 		default:
-			return nil, ErrInvalidRefreshToken
+			return nil, commonErrors.UnauthorizedError(ErrInvalidRefreshToken.Error(), ErrInvalidRefreshToken)
 		}
 	}
 
 	u, err := s.userRepo.FindByID(ctx, claims.UserID)
 	if err != nil {
-		return nil, user.ErrUserNotFound
+		return nil, commonErrors.NotFoundError(user.ErrUserNotFound.Error(), err)
 	}
 	if !u.IsActive {
-		return nil, ErrUserInactive
+		return nil, commonErrors.ForbiddenError(ErrUserInactive.Error(), ErrUserInactive)
 	}
 
 	roleName, err := s.userRepo.FindRoleNameByID(ctx, u.RoleID)
 	if err != nil {
-		return nil, err
+		return nil, commonErrors.InternalServerError("failed to fetch role name", err)
 	}
 
 	accessToken, err := s.tokenSvc.GenerateAccessToken(u.ID, u.Email, roleName)
 	if err != nil {
-		return nil, err
+		return nil, commonErrors.InternalServerError("failed to generate access token", err)
 	}
 
 	refreshToken := req.RefreshToken
 	if time.Until(claims.ExpiresAt.Time) < 24*time.Hour {
 		refreshToken, err = s.tokenSvc.GenerateRefreshToken(u.ID)
 		if err != nil {
-			return nil, err
+			return nil, commonErrors.InternalServerError("failed to generate refresh token", err)
 		}
 		auth.RefreshToken = refreshToken
 	}
@@ -253,7 +253,7 @@ func (s *service) RenewToken(ctx context.Context, req RefreshTokenRequest, brows
 	}
 
 	if err := s.authRepo.UpdateSession(ctx, auth); err != nil {
-		return nil, err
+		return nil, commonErrors.InternalServerError("failed to update session", err)
 	}
 
 	return &TokenResponse{
@@ -264,37 +264,11 @@ func (s *service) RenewToken(ctx context.Context, req RefreshTokenRequest, brows
 	}, nil
 }
 
-func (s *service) ChangePassword(ctx context.Context, userID int64, req ChangePasswordRequest) (ChangePasswordResponse, error) {
-	existingUser, err := s.userRepo.FindByID(ctx, userID)
-	if err != nil {
-		return ChangePasswordResponse{}, err
-	}
-
-	match, err := s.passwordSvc.Compare(req.OldPassword, existingUser.PasswordHash)
-	if err != nil || !match {
-		return ChangePasswordResponse{}, ErrInvalidCredentials
-	}
-
-	newHash, err := s.passwordSvc.Hash(req.NewPassword)
-	if err != nil {
-		return ChangePasswordResponse{}, err
-	}
-	updatedAt, err := s.userRepo.UpdatePassword(ctx, userID, newHash)
-	if err != nil {
-		return ChangePasswordResponse{}, err
-	}
-
-	return ChangePasswordResponse{
-		Email:     existingUser.Email,
-		UpdatedAt: updatedAt,
-	}, nil
-}
-
 func (s *service) enforceMaxActiveSessions(ctx context.Context, userID int64) error {
-	// fix: consistent method name
+
 	sessions, err := s.authRepo.FindActiveSessionsByUserID(ctx, userID)
 	if err != nil {
-		return err
+		return commonErrors.InternalServerError("failed to fetch active sessions", err)
 	}
 
 	if len(sessions) < maxActiveRefreshTokens {
@@ -304,7 +278,7 @@ func (s *service) enforceMaxActiveSessions(ctx context.Context, userID int64) er
 	excess := len(sessions) - maxActiveRefreshTokens + 1
 	for _, session := range sessions[:excess] {
 		if err := s.authRepo.DeactivateSession(ctx, session.ID); err != nil {
-			return err
+			return commonErrors.InternalServerError("failed to deactivate session", err)
 		}
 	}
 	return nil
