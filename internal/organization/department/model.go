@@ -19,3 +19,8 @@ type DepartmentResponse struct {
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
 }
+
+type DepartmentInfo struct {
+	Label string `json:"label"`
+	Name  string `json:"name"`
+}
