@@ -8,4 +8,5 @@ var (
 	ErrRoleNotFound       = errors.New("role not found")
 	ErrDepartmentNotFound = errors.New("department not found")
 	ErrPositionNotFound   = errors.New("position not found")
+	ErrIncorrectPassword  = errors.New("current password is incorrect")
 )
