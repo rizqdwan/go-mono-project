@@ -50,6 +50,7 @@ func registerUserRoutes(api *echo.Group, tokenSvc *token.Service, u *user.Handle
 	protected.PUT("/change-password", u.ChangePassword)
 
 	admin := userGroup.Group("", middleware.AuthMiddleware(tokenSvc), middleware.RolesMiddleware(role.ProjectAdmin))
-	admin.PUT(":id/reset-password", u.ResetPassword)
+	admin.PUT("/:id/reset-password", u.ResetPassword)
+	admin.GET("/list", u.UserList)
 
 }
