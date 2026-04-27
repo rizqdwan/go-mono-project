@@ -25,57 +25,6 @@
                 }
             }
         },
-        "/auth/change-password": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Change the authenticated user's password",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Auth"
-                ],
-                "summary": "Change password",
-                "parameters": [
-                    {
-                        "description": "Change Password Request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/internal_auth.ChangePasswordRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_auth_ChangePasswordResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
-                        }
-                    }
-                }
-            }
-        },
         "/auth/logout": {
             "post": {
                 "security": [
@@ -269,37 +218,182 @@
                     }
                 }
             }
+        },
+        "/user/change-password": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Authenticated user changes their own password. Requires current password.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Change own password",
+                "parameters": [
+                    {
+                        "description": "Change Password Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_user.ChangePasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_user_ChangePasswordResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/current": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get the authentication user details",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get current user details",
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_user_UserDetailsResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/user/{id}/reset-password": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "ProjectAdmin resets any user's password. Does not require the current password. Forces logout on all active sessions.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Reset a user's password (Admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Target User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Reset Password Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_user.ResetPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_user_ResetPasswordResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
+        "github_com_rizqdwan_go-mono-project_internal_organization_department.DepartmentInfo": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any": {
             "type": "object",
             "properties": {
                 "data": {},
-                "errors": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "message": {
-                    "type": "string"
-                },
-                "metaData": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "status": {
-                    "type": "integer"
-                }
-            }
-        },
-        "github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_auth_ChangePasswordResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "$ref": "#/definitions/internal_auth.ChangePasswordResponse"
-                },
                 "errors": {
                     "type": "array",
                     "items": {
@@ -366,34 +460,75 @@
                 }
             }
         },
-        "internal_auth.ChangePasswordRequest": {
+        "github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_user_ChangePasswordResponse": {
             "type": "object",
-            "required": [
-                "confirm_password",
-                "new_password",
-                "old_password"
-            ],
             "properties": {
-                "confirm_password": {
+                "data": {
+                    "$ref": "#/definitions/internal_user.ChangePasswordResponse"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "message": {
                     "type": "string"
                 },
-                "new_password": {
-                    "type": "string",
-                    "minLength": 8
+                "metaData": {
+                    "type": "object",
+                    "additionalProperties": {}
                 },
-                "old_password": {
-                    "type": "string"
+                "status": {
+                    "type": "integer"
                 }
             }
         },
-        "internal_auth.ChangePasswordResponse": {
+        "github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_user_ResetPasswordResponse": {
             "type": "object",
             "properties": {
-                "email": {
+                "data": {
+                    "$ref": "#/definitions/internal_user.ResetPasswordResponse"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "message": {
                     "type": "string"
                 },
-                "updated_at": {
+                "metaData": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "status": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_user_UserDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_user.UserDetailsResponse"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "message": {
                     "type": "string"
+                },
+                "metaData": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "status": {
+                    "type": "integer"
                 }
             }
         },
@@ -499,6 +634,93 @@
                     "type": "string"
                 },
                 "token_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_user.ChangePasswordRequest": {
+            "type": "object",
+            "required": [
+                "confirm_password",
+                "new_password",
+                "old_password"
+            ],
+            "properties": {
+                "confirm_password": {
+                    "type": "string"
+                },
+                "new_password": {
+                    "type": "string",
+                    "minLength": 8
+                },
+                "old_password": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_user.ChangePasswordResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_user.ResetPasswordRequest": {
+            "type": "object",
+            "required": [
+                "confirm_password",
+                "new_password"
+            ],
+            "properties": {
+                "confirm_password": {
+                    "type": "string"
+                },
+                "new_password": {
+                    "type": "string",
+                    "minLength": 8
+                }
+            }
+        },
+        "internal_user.ResetPasswordResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_user.UserDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "department": {
+                    "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_internal_organization_department.DepartmentInfo"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "string"
+                },
+                "role": {
                     "type": "string"
                 }
             }
