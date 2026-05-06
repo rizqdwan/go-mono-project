@@ -17,7 +17,10 @@ type Repository interface {
 	FindDepartmentByLabel(ctx context.Context, label string) (int64, error)
 	FindPositionByLabel(ctx context.Context, label string) (string, error)
 	FindDepartmentLabelByID(ctx context.Context, id int64) (string, error)
-	FindUserDetailsByID(ctx context.Context, id int64) (*UserDetailsResponse, error)
+	FindUsersByDepartmentID(ctx context.Context, departmentID int64) ([]UserListResponse, error)
+	FindUserDetailsByID(ctx context.Context, userID int64) (*UserDetailsResponse, error)
+	DeactivateUser(ctx context.Context, userID int64) error
+	HasActiveProjectAssignments(ctx context.Context, userID int64) (bool, error)
 }
 
 type repository struct {
@@ -153,11 +156,11 @@ func (r *repository) FindDepartmentLabelByID(ctx context.Context, id int64) (str
 
 func (r *repository) FindUserDetailsByID(ctx context.Context, userID int64) (*UserDetailsResponse, error) {
 	query := `
-        SELECT u.id, u.email, u.name, p.name , d.label, d.name, p.name , u.created_at
+        SELECT u.id, u.email, u.name, ur.name , d.label, d.name, up.name , u.created_at
         FROM users u
         JOIN user_roles ur ON ur.id = u.role_id
         JOIN departments d ON d.id = u.department_id
-        JOIN positions p ON p.id = u.position_id
+        JOIN user_positions up ON up.id = u.position_id
         WHERE u.id = $1
         LIMIT 1
       `
@@ -180,6 +183,83 @@ func (r *repository) FindUserDetailsByID(ctx context.Context, userID int64) (*Us
 	}
 
 	return &resp, nil
+}
+
+func (r *repository) FindUsersByDepartmentID(ctx context.Context, departmentID int64) ([]UserListResponse, error) {
+	query := `
+        SELECT u.id, u.email, u.name, ur.name , d.label, d.name, up.name , u.created_at
+        FROM users u
+        JOIN user_roles ur ON ur.id = u.role_id
+        JOIN departments d ON d.id = u.department_id
+        JOIN user_positions up ON up.id = u.position_id
+        WHERE u.department_id = $1
+    `
+	rows, err := r.db.QueryContext(ctx, query, departmentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var resp []UserListResponse
+	for rows.Next() {
+		var u UserListResponse
+		if err = rows.Scan(
+			&u.ID,
+			&u.Email,
+			&u.Name,
+			&u.Role,
+			&u.Department.Label,
+			&u.Department.Name,
+			&u.Position,
+			&u.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		resp = append(resp, u)
+	}
+
+	return resp, nil
+}
+
+func (r *repository) DeleteUser(ctx context.Context, userID int64) (bool, error) {
+	query := `
+		DELETE FROM users 
+		WHERE id = $1
+    `
+	_, err := r.db.ExecContext(ctx, query, userID)
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+func (r *repository) DeactivateUser(ctx context.Context, userID int64) error {
+	query := `
+		UPDATE users
+		SET is_active  = false,
+		    updated_at = NOW()
+		WHERE id = $1
+	`
+	_, err := r.db.ExecContext(ctx, query, userID)
+	return err
+}
+
+func (r *repository) HasActiveProjectAssignments(ctx context.Context, userID int64) (bool, error) {
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM project_members pm
+			JOIN projects p ON p.id = pm.project_id
+			WHERE pm.user_id = $1
+			  AND p.status_id NOT IN ('DONE', 'COMPLETED', 'CANCELLED')
+		)
+	`
+	var exists bool
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
 }
 
 func (r *repository) scanUser(row *sql.Row) (*User, error) {
