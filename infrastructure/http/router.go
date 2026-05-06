@@ -2,11 +2,11 @@ package http
 
 import (
 	"github.com/labstack/echo/v5"
+	"github.com/rizqdwan/go-mono-project/config"
 	_ "github.com/rizqdwan/go-mono-project/docs"
 	"github.com/rizqdwan/go-mono-project/infrastructure/http/middleware"
 	"github.com/rizqdwan/go-mono-project/internal/auth"
 	"github.com/rizqdwan/go-mono-project/internal/user"
-	"github.com/rizqdwan/go-mono-project/internal/user/role"
 	"github.com/rizqdwan/go-mono-project/pkg/token"
 	echoSwagger "github.com/swaggo/echo-swagger/v2"
 )
@@ -16,7 +16,7 @@ type Handlers struct {
 	User *user.Handler
 }
 
-func SetupRouter(e *echo.Echo, tokenSvc *token.Service, h *Handlers) {
+func SetupRouter(e *echo.Echo, tokenSvc *token.Service, roles config.RoleConfig, h *Handlers) {
 
 	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
@@ -25,13 +25,13 @@ func SetupRouter(e *echo.Echo, tokenSvc *token.Service, h *Handlers) {
 	welcomeHandler := NewWelcomeHandler()
 	api.GET("", welcomeHandler.Welcome)
 
-	registerAuthRoutes(api, tokenSvc, h.Auth)
-	registerUserRoutes(api, tokenSvc, h.User)
+	registerAuthRoutes(api, tokenSvc, roles, h.Auth)
+	registerUserRoutes(api, tokenSvc, roles, h.User)
 	// registerDepartmentRoutes(api, tokenSvc, DepartmentHandler)
 	// registerGroupRoutes(api, tokenSvc, GroupHandler)
 }
 
-func registerAuthRoutes(api *echo.Group, tokenSvc *token.Service, a *auth.Handler) {
+func registerAuthRoutes(api *echo.Group, tokenSvc *token.Service, roles config.RoleConfig, a *auth.Handler) {
 	authGroup := api.Group("/auth")
 
 	authGroup.POST("/signin", a.Login)
@@ -39,18 +39,20 @@ func registerAuthRoutes(api *echo.Group, tokenSvc *token.Service, a *auth.Handle
 	authGroup.POST("/logout", a.Logout)
 
 	protected := authGroup.Group("", middleware.AuthMiddleware(tokenSvc))
-	protected.POST("/signup", a.Register, middleware.RolesMiddleware(role.ProjectAdmin))
+	protected.POST("/signup", a.Register, middleware.RolesMiddleware(roles.ProjectAdmin))
 }
 
-func registerUserRoutes(api *echo.Group, tokenSvc *token.Service, u *user.Handler) {
-	userGroup := api.Group("/user")
+func registerUserRoutes(api *echo.Group, tokenSvc *token.Service, roles config.RoleConfig, u *user.Handler) {
+	userGroup := api.Group("/users")
 
 	protected := userGroup.Group("", middleware.AuthMiddleware(tokenSvc))
 	protected.GET("/current", u.UserDetails)
 	protected.PUT("/change-password", u.ChangePassword)
 
-	admin := userGroup.Group("", middleware.AuthMiddleware(tokenSvc), middleware.RolesMiddleware(role.ProjectAdmin))
-	admin.PUT("/:id/reset-password", u.ResetPassword)
+	admin := userGroup.Group("", middleware.AuthMiddleware(tokenSvc), middleware.RolesMiddleware(roles.ProjectAdmin))
 	admin.GET("/list", u.UserList)
+	//admin.PUT("/:id/details", u.UpdateUserDetails)
+	admin.PUT("/:id/reset-password", u.ResetPassword)
+	admin.DELETE("/:id", u.DeleteUser)
 
 }
