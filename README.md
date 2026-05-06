@@ -14,6 +14,7 @@ A monolithic RESTful API for project monitoring.
 - Echo : https://github.com/labstack/echo
 - Golang Migrate (Database Migration) : https://github.com/golang-migrate/migrate
 - Pgx (PostgresSQL Driver and Toolkit) : https://github.com/jackc/pgx
+- Air (Hot reload) : https://github.com/air-verse/air
 
 ## Features
 
