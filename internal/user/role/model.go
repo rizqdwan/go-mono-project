@@ -1,13 +1,17 @@
 package role
 
-import "strings"
-
-const (
-	ProjectAdmin   = "PROJECT_ADMIN"
-	DepartmentHead = "DEPARTMENT_HEAD"
-	PICProject     = "PIC_PROJECT"
-	TeamMember     = "TEAM_MEMBER"
+import (
+	"os"
+	"strings"
 )
+
+func GetRoles(key string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		panic("missing required env var: " + key)
+	}
+	return v
+}
 
 func FormatRoleName(raw string) string {
 	acronyms := map[string]string{
