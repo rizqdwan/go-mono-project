@@ -89,6 +89,11 @@ const docTemplate = `{
         },
         "/auth/renew": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Generate a new access token using a valid refresh token",
                 "consumes": [
                     "application/json"
@@ -230,7 +235,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/change-password": {
+        "/users/change-password": {
             "put": {
                 "security": [
                     {
@@ -281,7 +286,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/current": {
+        "/users/current": {
             "get": {
                 "security": [
                     {
@@ -318,7 +323,102 @@ const docTemplate = `{
                 }
             }
         },
-        "/user/{id}/reset-password": {
+        "/users/list": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get list of user with details by department",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Get list user by department",
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_user_UserListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "ProjectAdmin soft-deletes a user from their department. Blocks if user has active project assignments.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Delete a user (Admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Target User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}/reset-password": {
             "put": {
                 "security": [
                     {
@@ -543,6 +643,30 @@ const docTemplate = `{
                 }
             }
         },
+        "github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_user_UserListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/internal_user.UserListResponse"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "message": {
+                    "type": "string"
+                },
+                "metaData": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "status": {
+                    "type": "integer"
+                }
+            }
+        },
         "internal_auth.LoginRequest": {
             "type": "object",
             "required": [
@@ -613,7 +737,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "department": {
-                    "type": "string"
+                    "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_internal_organization_department.DepartmentInfo"
                 },
                 "email": {
                     "type": "string"
@@ -711,6 +835,32 @@ const docTemplate = `{
             }
         },
         "internal_user.UserDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "department": {
+                    "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_internal_organization_department.DepartmentInfo"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_user.UserListResponse": {
             "type": "object",
             "properties": {
                 "created_at": {

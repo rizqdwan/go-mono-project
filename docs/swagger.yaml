@@ -101,6 +101,22 @@ definitions:
       status:
         type: integer
     type: object
+  github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_user_UserListResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_user.UserListResponse'
+      errors:
+        items:
+          type: string
+        type: array
+      message:
+        type: string
+      metaData:
+        additionalProperties: {}
+        type: object
+      status:
+        type: integer
+    type: object
   internal_auth.LoginRequest:
     properties:
       email:
@@ -150,7 +166,7 @@ definitions:
       created_at:
         type: string
       department:
-        type: string
+        $ref: '#/definitions/github_com_rizqdwan_go-mono-project_internal_organization_department.DepartmentInfo'
       email:
         type: string
       id:
@@ -215,6 +231,23 @@ definitions:
         type: integer
     type: object
   internal_user.UserDetailsResponse:
+    properties:
+      created_at:
+        type: string
+      department:
+        $ref: '#/definitions/github_com_rizqdwan_go-mono-project_internal_organization_department.DepartmentInfo'
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      position:
+        type: string
+      role:
+        type: string
+    type: object
+  internal_user.UserListResponse:
     properties:
       created_at:
         type: string
@@ -307,6 +340,8 @@ paths:
           description: Unauthorized
           schema:
             $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+      security:
+      - BearerAuth: []
       summary: Renew access token
       tags:
       - Auth
@@ -372,7 +407,45 @@ paths:
       summary: Register new user
       tags:
       - Auth
-  /user/{id}/reset-password:
+  /users/{id}:
+    delete:
+      description: ProjectAdmin soft-deletes a user from their department. Blocks
+        if user has active project assignments.
+      parameters:
+      - description: Target User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+      security:
+      - BearerAuth: []
+      summary: Delete a user (Admin)
+      tags:
+      - User
+  /users/{id}/reset-password:
     put:
       consumes:
       - application/json
@@ -418,7 +491,7 @@ paths:
       summary: Reset a user's password (Admin)
       tags:
       - User
-  /user/change-password:
+  /users/change-password:
     put:
       consumes:
       - application/json
@@ -451,7 +524,7 @@ paths:
       summary: Change own password
       tags:
       - User
-  /user/current:
+  /users/current:
     get:
       description: Get the authentication user details
       produces:
@@ -472,6 +545,29 @@ paths:
       security:
       - BearerAuth: []
       summary: Get current user details
+      tags:
+      - User
+  /users/list:
+    get:
+      description: Get list of user with details by department
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_user_UserListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+      security:
+      - BearerAuth: []
+      summary: Get list user by department
       tags:
       - User
 swagger: "2.0"
