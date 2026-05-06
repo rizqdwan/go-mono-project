@@ -108,6 +108,7 @@ func (h *Handler) Logout(c *echo.Context) error {
 // @Tags         Auth
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
 // @Param        request  body      RefreshTokenRequest  true  "Refresh Token"
 // @Success      200      {object}  response.WebResponse[TokenResponse]
 // @Failure      400      {object}  response.WebResponse[any]
