@@ -19,6 +19,7 @@ type User struct {
 	UpdatedAt    time.Time `db:"updated_at"`
 }
 
+// @name UserResponse
 type UserResponse struct {
 	ID         int64     `json:"id"`
 	Email      string    `json:"email"`
@@ -29,7 +30,19 @@ type UserResponse struct {
 	CreatedAt  time.Time `json:"created_at"`
 }
 
+// @name UserDetailsResponse
 type UserDetailsResponse struct {
+	ID         int64                     `json:"id"`
+	Email      string                    `json:"email"`
+	Name       string                    `json:"name"`
+	Role       string                    `json:"role"`
+	Department department.DepartmentInfo `json:"department"`
+	Position   string                    `json:"position"`
+	CreatedAt  time.Time                 `json:"created_at"`
+}
+
+// @name UserListResponse
+type UserListResponse struct {
 	ID         int64                     `json:"id"`
 	Email      string                    `json:"email"`
 	Name       string                    `json:"name"`
@@ -45,22 +58,26 @@ type UserFilter struct {
 	Role  string
 }
 
+// @name ChangePasswordRequest
 type ChangePasswordRequest struct {
 	OldPassword     string `json:"old_password"     validate:"required"`
 	NewPassword     string `json:"new_password"     validate:"required,min=8"`
 	ConfirmPassword string `json:"confirm_password" validate:"required,eqfield=NewPassword"`
 }
 
+// @name ChangePasswordResponse
 type ChangePasswordResponse struct {
 	Email     string    `json:"email"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+// @name ResetPasswordRequest
 type ResetPasswordRequest struct {
 	NewPassword     string `json:"new_password"     validate:"required,min=8"`
 	ConfirmPassword string `json:"confirm_password" validate:"required,eqfield=NewPassword"`
 }
 
+// @name ResetPasswordResponse
 type ResetPasswordResponse struct {
 	UserID    int64     `json:"user_id"`
 	Email     string    `json:"email"`
