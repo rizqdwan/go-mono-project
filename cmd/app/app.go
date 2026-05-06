@@ -32,7 +32,7 @@ func newApplication(cfg *config.Config) (*application, error) {
 	authRepo := auth.NewRepository(database.DB)
 
 	authSvc := auth.NewService(authRepo, userRepo, tokenSvc, passwordSvc)
-	userSvc := user.NewService(userRepo, tokenSvc, passwordSvc, authRepo)
+	userSvc := user.NewService(userRepo, tokenSvc, passwordSvc, authRepo, cfg.Role)
 
 	e := echo.New()
 	e.Validator = validator.New()
@@ -43,7 +43,7 @@ func newApplication(cfg *config.Config) (*application, error) {
 		User: user.NewHandler(userSvc),
 	}
 
-	infrahttp.SetupRouter(e, tokenSvc, handlers)
+	infrahttp.SetupRouter(e, tokenSvc, cfg.Role, handlers)
 
 	return &application{
 		echo:     e,

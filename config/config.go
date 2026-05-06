@@ -7,12 +7,22 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/rizqdwan/go-mono-project/internal/user/role"
 )
 
+type RoleConfig struct {
+	SuperAdmin     string
+	ProjectAdmin   string
+	DepartmentHead string
+	PICProject     string
+	TeamMember     string
+}
+
 type Config struct {
-	App AppConfig
-	DB  DBConfig
-	JWT JWTConfig
+	App  AppConfig
+	DB   DBConfig
+	JWT  JWTConfig
+	Role RoleConfig
 }
 
 type AppConfig struct {
@@ -114,6 +124,13 @@ func LoadConfig(envPath ...string) (*Config, error) {
 			Secret:     os.Getenv("JWT_SECRET"),
 			AccessTTL:  accessTTL,
 			RefreshTTL: refreshTTL,
+		},
+		Role: RoleConfig{
+			SuperAdmin:     role.GetRoles("ROLE_0"),
+			ProjectAdmin:   role.GetRoles("ROLE_1"),
+			DepartmentHead: role.GetRoles("ROLE_2"),
+			PICProject:     role.GetRoles("ROLE_3"),
+			TeamMember:     role.GetRoles("ROLE_4"),
 		},
 	}, nil
 }
