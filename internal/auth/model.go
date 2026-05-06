@@ -3,7 +3,7 @@ package auth
 import (
 	"time"
 
-	"github.com/rizqdwan/go-mono-project/internal/user"
+	"github.com/rizqdwan/go-mono-project/internal/organization/department"
 )
 
 type Authentication struct {
@@ -16,11 +16,13 @@ type Authentication struct {
 	LastActivity time.Time `db:"last_activity"`
 }
 
+// @name LoginRequest
 type LoginRequest struct {
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required,min=8"`
 }
 
+// @name RegisterRequest
 type RegisterRequest struct {
 	Name            string `json:"name"             validate:"required"`
 	Email           string `json:"email"            validate:"required,email"`
@@ -31,6 +33,7 @@ type RegisterRequest struct {
 	Position        string `json:"position"         validate:"required"`
 }
 
+// @name TokenResponse
 type TokenResponse struct {
 	AccessToken  string `json:"access_token"`
 	RefreshToken string `json:"refresh_token"`
@@ -38,8 +41,18 @@ type TokenResponse struct {
 	ExpiresIn    int64  `json:"expires_in"`
 }
 
-type RegisterResponse = user.UserResponse
+// @name RegisterResponse
+type RegisterResponse struct {
+	ID         int64                     `json:"id"`
+	Email      string                    `json:"email"`
+	Name       string                    `json:"name"`
+	Role       string                    `json:"role"`
+	Department department.DepartmentInfo `json:"department"`
+	Position   string                    `json:"position"`
+	CreatedAt  time.Time                 `json:"created_at"`
+}
 
+// @name RefreshTokenRequest
 type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token" validate:"required"`
 }

@@ -11,6 +11,7 @@ type Department struct {
 	updated_at time.Time `db:"updated_at"`
 }
 
+// @name DepartmentResponse
 type DepartmentResponse struct {
 	ID        int64  `json:"id"`
 	Label     string `json:"label"`
