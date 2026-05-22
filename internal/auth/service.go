@@ -14,7 +14,7 @@ import (
 
 type Service interface {
 	Login(ctx context.Context, req LoginRequest, browserInfo string) (*TokenResponse, error)
-	Register(ctx context.Context, req RegisterRequest) (*user.UserResponse, error)
+	Register(ctx context.Context, adminID int64, req RegisterRequest) (*user.UserResponse, error)
 	Logout(ctx context.Context, refreshToken string) error
 	RenewToken(ctx context.Context, req RefreshTokenRequest, browserInfo string) (*TokenResponse, error)
 }
@@ -40,9 +40,14 @@ func NewService(authRepo Repository, userRepo user.Repository, tokenSvc *token.S
 	return s
 }
 
-func (s *service) Register(ctx context.Context, req RegisterRequest) (*user.UserResponse, error) {
+func (s *service) Register(ctx context.Context, adminID int64, req RegisterRequest) (*user.UserResponse, error) {
 	if req.Password != req.ConfirmPassword {
 		return nil, commonErrors.InvariantError(ErrPasswordMismatch.Error(), ErrPasswordMismatch)
+	}
+
+	admin, err := s.userRepo.FindByID(ctx, adminID)
+	if err != nil {
+		return nil, commonErrors.InternalServerError("failed to fetch admin", err)
 	}
 
 	email := strings.ToLower(strings.TrimSpace(req.Email))
@@ -63,11 +68,6 @@ func (s *service) Register(ctx context.Context, req RegisterRequest) (*user.User
 		return nil, commonErrors.InternalServerError("failed to find role", err)
 	}
 
-	deptID, err := s.userRepo.FindDepartmentByLabel(ctx, req.Department)
-	if err != nil {
-		return nil, commonErrors.NotFoundError(user.ErrDepartmentNotFound.Error(), err)
-	}
-
 	posID, err := s.userRepo.FindPositionByLabel(ctx, req.Position)
 	if err != nil {
 		return nil, commonErrors.NotFoundError(user.ErrPositionNotFound.Error(), err)
@@ -83,7 +83,7 @@ func (s *service) Register(ctx context.Context, req RegisterRequest) (*user.User
 		Email:        email,
 		PasswordHash: hashed,
 		RoleID:       roleID,
-		DepartmentID: deptID,
+		DepartmentID: admin.DepartmentID,
 		PositionID:   posID,
 		IsActive:     true,
 	}
