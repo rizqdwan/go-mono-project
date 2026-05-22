@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/rizqdwan/go-mono-project/config"
 	"github.com/rizqdwan/go-mono-project/infrastructure/security"
@@ -17,9 +18,9 @@ type SessionDeactivator interface {
 type Service interface {
 	ListUser(ctx context.Context, userID int64) ([]UserListResponse, error)
 	UserDetails(ctx context.Context, userID int64) (*UserDetailsResponse, error)
-	//UpdateUserDetails(ctx context.Context, user *UserDetailsResponse) (*UserDetailsResponse, error)
+	UpdateUserDetails(ctx context.Context, adminID int64, targetUserID int64, req UpdateUserDetailsRequest) (*UserDetailsResponse, error)
 	ChangePassword(ctx context.Context, userID int64, req ChangePasswordRequest) (ChangePasswordResponse, error)
-	ResetPassword(ctx context.Context, targetUserID int64, req ResetPasswordRequest) (ResetPasswordResponse, error)
+	ResetPassword(ctx context.Context, adminID int64, targetUserID int64, req ResetPasswordRequest) (ResetPasswordResponse, error)
 	DeleteUser(ctx context.Context, adminID int64, targetUserID int64) error
 }
 
@@ -72,6 +73,67 @@ func (s *service) UserDetails(ctx context.Context, userID int64) (*UserDetailsRe
 	return u, nil
 }
 
+func (s *service) UpdateUserDetails(ctx context.Context, adminID int64, targetUserID int64, req UpdateUserDetailsRequest) (*UserDetailsResponse, error) {
+	if adminID == targetUserID {
+		return nil, commonErrors.ForbiddenError(ErrCannotDeleteSelf.Error(), ErrCannotDeleteSelf)
+	}
+
+	admin, err := s.userRepo.FindByID(ctx, adminID)
+	if err != nil {
+		return nil, commonErrors.InternalServerError("failed to fetch admin", err)
+	}
+
+	targetUser, err := s.userRepo.FindByID(ctx, targetUserID)
+	if err != nil {
+		return nil, commonErrors.NotFoundError(ErrUserNotFound.Error(), err)
+	}
+
+	if admin.DepartmentID != targetUser.DepartmentID {
+		return nil, commonErrors.ForbiddenError(ErrDifferentDepartment.Error(), ErrDifferentDepartment)
+	}
+
+	if req.Email != targetUser.Email {
+		existing, err := s.userRepo.FindByEmail(ctx, req.Email)
+		if err == nil && existing != nil {
+			return nil, commonErrors.ConflictError(ErrEmailAlreadyExists.Error(), ErrEmailAlreadyExists)
+		}
+	}
+
+	roleID, err := s.userRepo.FindRoleByName(ctx, req.Role)
+	if err != nil {
+		return nil, commonErrors.NotFoundError(ErrRoleNotFound.Error(), err)
+	}
+	if req.Role == s.roles.ProjectAdmin {
+		return nil, commonErrors.ForbiddenError(ErrCannotDeleteAdmin.Error(), ErrCannotDeleteAdmin)
+	}
+
+	positionID, err := s.userRepo.FindPositionByLabel(ctx, req.Position)
+	if err != nil {
+		return nil, commonErrors.NotFoundError(ErrPositionNotFound.Error(), err)
+	}
+
+	targetUser.Email = req.Email
+	targetUser.Name = req.Name
+	targetUser.RoleID = roleID
+	targetUser.PositionID = positionID
+
+	_, err = s.userRepo.UpdateUserDetails(ctx, targetUser)
+	if err != nil {
+		return nil, commonErrors.InternalServerError("failed to update user details", err)
+	}
+
+	updated, err := s.userRepo.FindUserDetailsByID(ctx, targetUserID)
+	if err != nil {
+		return nil, commonErrors.InternalServerError("failed to fetch updated user", err)
+	}
+
+	fmt.Printf("UPDATED: %+v\n", updated)
+	fmt.Printf("ERR: %+v\n", err)
+
+	updated.Role = role.FormatRoleName(updated.Role)
+	return updated, nil
+}
+
 func (s *service) ChangePassword(ctx context.Context, userID int64, req ChangePasswordRequest) (ChangePasswordResponse, error) {
 	existingUser, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
@@ -99,10 +161,23 @@ func (s *service) ChangePassword(ctx context.Context, userID int64, req ChangePa
 	}, nil
 }
 
-func (s *service) ResetPassword(ctx context.Context, targetUserID int64, req ResetPasswordRequest) (ResetPasswordResponse, error) {
+func (s *service) ResetPassword(ctx context.Context, adminID int64, targetUserID int64, req ResetPasswordRequest) (ResetPasswordResponse, error) {
+	if adminID == targetUserID {
+		return ResetPasswordResponse{}, commonErrors.ForbiddenError(ErrCannotDeleteSelf.Error(), ErrCannotDeleteSelf)
+	}
+
+	admin, err := s.userRepo.FindByID(ctx, adminID)
+	if err != nil {
+		return ResetPasswordResponse{}, commonErrors.InternalServerError("failed to fetch admin user", err)
+	}
+
 	targetUser, err := s.userRepo.FindByID(ctx, targetUserID)
 	if err != nil {
 		return ResetPasswordResponse{}, commonErrors.NotFoundError(ErrUserNotFound.Error(), err)
+	}
+
+	if admin.DepartmentID != targetUser.DepartmentID {
+		return ResetPasswordResponse{}, commonErrors.ForbiddenError(ErrDifferentDepartment.Error(), ErrDifferentDepartment)
 	}
 
 	newHsh, err := s.passwordSvc.Hash(req.NewPassword)
@@ -139,15 +214,6 @@ func (s *service) DeleteUser(ctx context.Context, adminID int64, targetUserID in
 	targetUser, err := s.userRepo.FindByID(ctx, targetUserID)
 	if err != nil {
 		return commonErrors.NotFoundError(ErrUserNotFound.Error(), err)
-	}
-
-	targetRoleName, err := s.userRepo.FindRoleNameByID(ctx, targetUser.RoleID)
-	if err != nil {
-		return commonErrors.InternalServerError("failed to fetch role name", err)
-	}
-
-	if targetRoleName == s.roles.ProjectAdmin {
-		return commonErrors.ForbiddenError(ErrCannotDeleteAdmin.Error(), ErrCannotDeleteAdmin)
 	}
 
 	if admin.DepartmentID != targetUser.DepartmentID {
