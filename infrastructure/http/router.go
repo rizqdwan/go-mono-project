@@ -51,7 +51,7 @@ func registerUserRoutes(api *echo.Group, tokenSvc *token.Service, roles config.R
 
 	admin := userGroup.Group("", middleware.AuthMiddleware(tokenSvc), middleware.RolesMiddleware(roles.ProjectAdmin))
 	admin.GET("/list", u.UserList)
-	//admin.PUT("/:id/details", u.UpdateUserDetails)
+	admin.PUT("/:id/details", u.UpdateUserDetails)
 	admin.PUT("/:id/reset-password", u.ResetPassword)
 	admin.DELETE("/:id", u.DeleteUser)
 
