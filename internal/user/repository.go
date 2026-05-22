@@ -11,6 +11,7 @@ type Repository interface {
 	FindByEmail(ctx context.Context, email string) (*User, error)
 	FindByID(ctx context.Context, id int64) (*User, error)
 	CreateUser(ctx context.Context, u *User) error
+	UpdateUserDetails(ctx context.Context, u *User) (time.Time, error)
 	UpdatePassword(ctx context.Context, userID int64, hashedPassword string) (time.Time, error)
 	FindRoleByName(ctx context.Context, name string) (int64, error)
 	FindRoleNameByID(ctx context.Context, roleID int64) (string, error)
@@ -66,6 +67,31 @@ func (r *repository) CreateUser(ctx context.Context, u *User) error {
 		u.DepartmentID,
 		u.PositionID,
 	).Scan(&u.ID, &u.CreatedAt, &u.UpdatedAt)
+}
+
+func (r *repository) UpdateUserDetails(ctx context.Context, u *User) (time.Time, error) {
+	query := `
+		UPDATE users
+		SET email 		= $1,
+			name 		= $2,
+			role_id 	= $3,
+			position_id = $4,
+			updated_at 	= NOW()
+		WHERE id = $5
+		RETURNING updated_at
+`
+	var updatedAt time.Time
+	err := r.db.QueryRowContext(ctx, query,
+		u.Email,
+		u.Name,
+		u.RoleID,
+		u.PositionID,
+		u.ID,
+	).Scan(&updatedAt)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return updatedAt, nil
 }
 
 func (r *repository) UpdatePassword(ctx context.Context, userID int64, hashedPassword string) (time.Time, error) {
@@ -156,7 +182,7 @@ func (r *repository) FindDepartmentLabelByID(ctx context.Context, id int64) (str
 
 func (r *repository) FindUserDetailsByID(ctx context.Context, userID int64) (*UserDetailsResponse, error) {
 	query := `
-        SELECT u.id, u.email, u.name, ur.name , d.label, d.name, up.name , u.created_at
+        SELECT u.id, u.email, u.name, ur.name , d.label, d.name, up.name , u.created_at, u.updated_at
         FROM users u
         JOIN user_roles ur ON ur.id = u.role_id
         JOIN departments d ON d.id = u.department_id
@@ -174,6 +200,7 @@ func (r *repository) FindUserDetailsByID(ctx context.Context, userID int64) (*Us
 		&resp.Department.Name,
 		&resp.Position,
 		&resp.CreatedAt,
+		&resp.UpdatedAt,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrUserNotFound
