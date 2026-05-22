@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v5"
+	"github.com/rizqdwan/go-mono-project/infrastructure/http/middleware"
 	"github.com/rizqdwan/go-mono-project/pkg/response"
 )
 
@@ -28,6 +29,11 @@ func NewHandler(svc Service) *Handler {
 // @Failure      401      {object}  response.WebResponse[any]
 // @Router       /auth/signup [post]
 func (h *Handler) Register(c *echo.Context) error {
+	adminID, err := middleware.GetUserID(c)
+	if err != nil {
+		return err
+	}
+
 	var req RegisterRequest
 	if err := c.Bind(&req); err != nil {
 		return response.Error(c, http.StatusBadRequest, "invalid request body", []string{err.Error()})
@@ -36,7 +42,7 @@ func (h *Handler) Register(c *echo.Context) error {
 		return response.Error(c, http.StatusBadRequest, "validation failed", []string{err.Error()})
 	}
 
-	resp, err := h.svc.Register(c.Request().Context(), req)
+	resp, err := h.svc.Register(c.Request().Context(), adminID, req)
 	if err != nil {
 		return err
 	}
