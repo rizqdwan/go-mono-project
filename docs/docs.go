@@ -302,8 +302,8 @@ const docTemplate = `{
                 ],
                 "summary": "Get current user details",
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_user_UserDetailsResponse"
                         }
@@ -339,8 +339,8 @@ const docTemplate = `{
                 ],
                 "summary": "Get list user by department",
                 "responses": {
-                    "201": {
-                        "description": "Created",
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_user_UserListResponse"
                         }
@@ -389,6 +389,76 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}/details": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update user details data by project admin",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "User"
+                ],
+                "summary": "Update user details",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Target User ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update User Details Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_user.UpdateUserDetailsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_user_UserDetailsResponse"
                         }
                     },
                     "400": {
@@ -831,6 +901,29 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "integer"
+                }
+            }
+        },
+        "internal_user.UpdateUserDetailsRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "name",
+                "position",
+                "role"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
                 }
             }
         },

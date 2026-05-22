@@ -230,6 +230,22 @@ definitions:
       user_id:
         type: integer
     type: object
+  internal_user.UpdateUserDetailsRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      position:
+        type: string
+      role:
+        type: string
+    required:
+    - email
+    - name
+    - position
+    - role
+    type: object
   internal_user.UserDetailsResponse:
     properties:
       created_at:
@@ -445,6 +461,51 @@ paths:
       summary: Delete a user (Admin)
       tags:
       - User
+  /users/{id}/details:
+    put:
+      consumes:
+      - application/json
+      description: Update user details data by project admin
+      parameters:
+      - description: Target User ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update User Details Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_user.UpdateUserDetailsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_user_UserDetailsResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+      security:
+      - BearerAuth: []
+      summary: Update user details
+      tags:
+      - User
   /users/{id}/reset-password:
     put:
       consumes:
@@ -530,8 +591,8 @@ paths:
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           schema:
             $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_user_UserDetailsResponse'
         "400":
@@ -553,8 +614,8 @@ paths:
       produces:
       - application/json
       responses:
-        "201":
-          description: Created
+        "200":
+          description: OK
           schema:
             $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_user_UserListResponse'
         "400":
