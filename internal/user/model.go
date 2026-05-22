@@ -39,6 +39,7 @@ type UserDetailsResponse struct {
 	Department department.DepartmentInfo `json:"department"`
 	Position   string                    `json:"position"`
 	CreatedAt  time.Time                 `json:"created_at"`
+	UpdatedAt  time.Time                 `json:"updated_at"`
 }
 
 // @name UserListResponse
@@ -56,6 +57,14 @@ type UserFilter struct {
 	Name  string
 	Email string
 	Role  string
+}
+
+// @name UpdateUserDetails
+type UpdateUserDetailsRequest struct {
+	Email    string `json:"email" validate:"required,email"`
+	Name     string `json:"name" validate:"required"`
+	Role     string `json:"role" validate:"required"`
+	Position string `json:"position" validate:"required"`
 }
 
 // @name ChangePasswordRequest
