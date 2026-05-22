@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v5"
+	"github.com/rizqdwan/go-mono-project/infrastructure/http/middleware"
 	"github.com/rizqdwan/go-mono-project/pkg/response"
 )
 
@@ -22,14 +23,14 @@ func NewHandler(svc Service) *Handler {
 // @Tags         User
 // @Produce      json
 // @Security     BearerAuth
-// @Success      201      {object}  response.WebResponse[UserListResponse]
+// @Success      200      {object}  response.WebResponse[UserListResponse]
 // @Failure      400      {object}  response.WebResponse[any]
 // @Failure      401      {object}  response.WebResponse[any]
 // @Router       /users/list [get]
 func (h *Handler) UserList(c *echo.Context) error {
-	userID, ok := c.Get("userID").(int64)
-	if !ok || userID == 0 {
-		return response.Error(c, http.StatusUnauthorized, "missing user identify", nil)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return err
 	}
 
 	resp, err := h.svc.ListUser(c.Request().Context(), userID)
@@ -37,7 +38,7 @@ func (h *Handler) UserList(c *echo.Context) error {
 		return err
 	}
 
-	return response.Success(c, http.StatusOK, "User list successfully", resp)
+	return response.Success(c, http.StatusOK, "user list retrieved successfully", resp)
 }
 
 // UserDetails godoc
@@ -46,31 +47,65 @@ func (h *Handler) UserList(c *echo.Context) error {
 // @Tags         User
 // @Produce      json
 // @Security     BearerAuth
-// @Success      201      {object}  response.WebResponse[UserDetailsResponse]
+// @Success      200      {object}  response.WebResponse[UserDetailsResponse]
 // @Failure      400      {object}  response.WebResponse[any]
 // @Failure      401      {object}  response.WebResponse[any]
 // @Router       /users/current [get]
 func (h *Handler) UserDetails(c *echo.Context) error {
-	userID, ok := c.Get("userID").(int64)
-	if !ok || userID == 0 {
-		return response.Error(c, http.StatusUnauthorized, "missing user identity", nil)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return err
 	}
 
 	resp, err := h.svc.UserDetails(c.Request().Context(), userID)
 	if err != nil {
 		return err
 	}
-	return response.Success(c, http.StatusOK, "User details successfully", resp)
+	return response.Success(c, http.StatusOK, "user details retrieved successfully", resp)
 }
 
-//func (h *Handler) UpdateUserDetails(c *echo.Context) error {
-//	targetUserID, ok := c.Get("userID").(int64)
-//	if !ok || targetUserID == 0 {
-//		return response.Error(c, http.StatusUnauthorized, "missing user identity", nil)
-//	}
-//
-//	return response.Success(c, http.StatusOK, "Update user details successfully", c.Get("userID"))
-//}
+// UpdateUserDetails godoc
+// @Summary 	Update user details
+// @Description Update user details data by project admin
+// @Tags         User
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id       path      int                    true  "Target User ID"
+// @Param        request  body      UpdateUserDetailsRequest   true  "Update User Details Request"
+// @Success      200      {object}  response.WebResponse[UserDetailsResponse]
+// @Failure      400      {object}  response.WebResponse[any]
+// @Failure      401      {object}  response.WebResponse[any]
+// @Failure      403      {object}  response.WebResponse[any]
+// @Failure      404      {object}  response.WebResponse[any]
+// @Router       /users/{id}/details [put]
+func (h *Handler) UpdateUserDetails(c *echo.Context) error {
+	adminID, err := middleware.GetUserID(c)
+	if err != nil {
+		return err
+	}
+
+	targetUserID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || targetUserID == 0 {
+		return response.Error(c, http.StatusBadRequest, "invalid user id", nil)
+	}
+
+	var req UpdateUserDetailsRequest
+
+	if err := c.Bind(&req); err != nil {
+		return response.Error(c, http.StatusBadRequest, "invalid request body", []string{err.Error()})
+	}
+	if err := c.Validate(req); err != nil {
+		return response.Error(c, http.StatusBadRequest, "validation failed", []string{err.Error()})
+	}
+
+	resp, err := h.svc.UpdateUserDetails(c.Request().Context(), adminID, targetUserID, req)
+	if err != nil {
+		return err
+	}
+
+	return response.Success(c, http.StatusOK, "user details updated successfully", resp)
+}
 
 // ChangePassword godoc
 // @Summary      Change own password
@@ -85,9 +120,9 @@ func (h *Handler) UserDetails(c *echo.Context) error {
 // @Failure      401      {object}  response.WebResponse[any]
 // @Router       /users/change-password [put]
 func (h *Handler) ChangePassword(c *echo.Context) error {
-	userID, ok := c.Get("userID").(int64)
-	if !ok || userID == 0 {
-		return response.Error(c, http.StatusUnauthorized, "missing user identity", nil)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return err
 	}
 
 	var req ChangePasswordRequest
@@ -122,6 +157,11 @@ func (h *Handler) ChangePassword(c *echo.Context) error {
 // @Failure      404      {object}  response.WebResponse[any]
 // @Router       /users/{id}/reset-password [put]
 func (h *Handler) ResetPassword(c *echo.Context) error {
+	adminID, err := middleware.GetUserID(c)
+	if err != nil {
+		return err
+	}
+
 	targetUserID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || targetUserID == 0 {
 		return response.Error(c, http.StatusBadRequest, "invalid user id", nil)
@@ -135,7 +175,7 @@ func (h *Handler) ResetPassword(c *echo.Context) error {
 		return response.Error(c, http.StatusBadRequest, "validation failed", []string{err.Error()})
 	}
 
-	resp, err := h.svc.ResetPassword(c.Request().Context(), targetUserID, req)
+	resp, err := h.svc.ResetPassword(c.Request().Context(), adminID, targetUserID, req)
 	if err != nil {
 		return err
 	}
@@ -157,17 +197,16 @@ func (h *Handler) ResetPassword(c *echo.Context) error {
 // @Failure      404      {object}  response.WebResponse[any]
 // @Router       /users/{id} [delete]
 func (h *Handler) DeleteUser(c *echo.Context) error {
-	admin, ok := c.Get("userID").(int64)
-	if !ok || admin == 0 {
-		return response.Error(c, http.StatusUnauthorized, "missing user identity", nil)
+	adminID, err := middleware.GetUserID(c)
+	if err != nil {
+		return err
 	}
-
 	targetUserID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil || targetUserID == 0 {
 		return response.Error(c, http.StatusBadRequest, "invalid user id", nil)
 	}
 
-	if err := h.svc.DeleteUser(c.Request().Context(), targetUserID, admin); err != nil {
+	if err := h.svc.DeleteUser(c.Request().Context(), adminID, targetUserID); err != nil {
 		return err
 	}
 
