@@ -9,6 +9,8 @@ import (
 	"github.com/rizqdwan/go-mono-project/infrastructure/http/middleware"
 	"github.com/rizqdwan/go-mono-project/infrastructure/security"
 	"github.com/rizqdwan/go-mono-project/internal/auth"
+	"github.com/rizqdwan/go-mono-project/internal/organization/department"
+	"github.com/rizqdwan/go-mono-project/internal/organization/group"
 	"github.com/rizqdwan/go-mono-project/internal/user"
 	"github.com/rizqdwan/go-mono-project/pkg/token"
 	"github.com/rizqdwan/go-mono-project/pkg/validator"
@@ -30,17 +32,23 @@ func newApplication(cfg *config.Config) (*application, error) {
 
 	userRepo := user.NewRepository(database.DB)
 	authRepo := auth.NewRepository(database.DB)
+	departmentRepo := department.NewRepository(database.DB)
+	groupRepo := group.NewRepository(database.DB)
 
 	authSvc := auth.NewService(authRepo, userRepo, tokenSvc, passwordSvc)
 	userSvc := user.NewService(userRepo, tokenSvc, passwordSvc, authRepo, cfg.Role)
+	deptSvc := department.NewService(departmentRepo, groupRepo)
+	groupSvc := group.NewService(groupRepo)
 
 	e := echo.New()
 	e.Validator = validator.New()
 	e.HTTPErrorHandler = middleware.ErrorHandler
 
 	handlers := &infrahttp.Handlers{
-		Auth: auth.NewHandler(authSvc),
-		User: user.NewHandler(userSvc),
+		Auth:       auth.NewHandler(authSvc),
+		User:       user.NewHandler(userSvc),
+		Department: department.NewHandler(deptSvc),
+		Group:      group.NewHandler(groupSvc),
 	}
 
 	infrahttp.SetupRouter(e, tokenSvc, cfg.Role, handlers)
