@@ -72,7 +72,7 @@ func (s *service) UpdateGroup(ctx context.Context, id int64, req UpdateGroupRequ
 	}
 
 	group.Label = req.Label
-	group.Name = req.Label
+	group.Name = req.Name
 
 	updatedAt, err := s.groupRepo.UpdateGroup(ctx, group)
 	if err != nil {
