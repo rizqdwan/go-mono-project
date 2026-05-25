@@ -32,6 +32,7 @@ func (r *repository) FindSessionByRefreshToken(ctx context.Context, refreshToken
 		SELECT id, user_id, refresh_token, is_active, browser_info, created_at, last_activity
 		FROM authentication_sessions
 		WHERE refresh_token = $1
+		LIMIT 1
 	`
 	return r.scanSession(r.db.QueryRowContext(ctx, query, refreshToken))
 }
@@ -181,5 +182,8 @@ func (r *repository) scanSession(row *sql.Row) (*Authentication, error) {
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrSessionNotFound
 	}
-	return s, err
+	if err != nil {
+		return nil, err
+	}
+	return s, nil
 }
