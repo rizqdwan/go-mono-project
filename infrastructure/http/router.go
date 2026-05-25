@@ -6,14 +6,18 @@ import (
 	_ "github.com/rizqdwan/go-mono-project/docs"
 	"github.com/rizqdwan/go-mono-project/infrastructure/http/middleware"
 	"github.com/rizqdwan/go-mono-project/internal/auth"
+	"github.com/rizqdwan/go-mono-project/internal/organization/department"
+	"github.com/rizqdwan/go-mono-project/internal/organization/group"
 	"github.com/rizqdwan/go-mono-project/internal/user"
 	"github.com/rizqdwan/go-mono-project/pkg/token"
 	echoSwagger "github.com/swaggo/echo-swagger/v2"
 )
 
 type Handlers struct {
-	Auth *auth.Handler
-	User *user.Handler
+	Auth       *auth.Handler
+	User       *user.Handler
+	Department *department.Handler
+	Group      *group.Handler
 }
 
 func SetupRouter(e *echo.Echo, tokenSvc *token.Service, roles config.RoleConfig, h *Handlers) {
@@ -27,8 +31,7 @@ func SetupRouter(e *echo.Echo, tokenSvc *token.Service, roles config.RoleConfig,
 
 	registerAuthRoutes(api, tokenSvc, roles, h.Auth)
 	registerUserRoutes(api, tokenSvc, roles, h.User)
-	// registerDepartmentRoutes(api, tokenSvc, DepartmentHandler)
-	// registerGroupRoutes(api, tokenSvc, GroupHandler)
+	registerOrganizationRoutes(api, tokenSvc, roles, h.Department, h.Group)
 }
 
 func registerAuthRoutes(api *echo.Group, tokenSvc *token.Service, roles config.RoleConfig, a *auth.Handler) {
@@ -54,5 +57,22 @@ func registerUserRoutes(api *echo.Group, tokenSvc *token.Service, roles config.R
 	admin.PUT("/:id/details", u.UpdateUserDetails)
 	admin.PUT("/:id/reset-password", u.ResetPassword)
 	admin.DELETE("/:id", u.DeleteUser)
+
+}
+
+func registerOrganizationRoutes(api *echo.Group, tokenSvc *token.Service, roles config.RoleConfig, d *department.Handler, g *group.Handler) {
+	departments := api.Group("/departments", middleware.AuthMiddleware(tokenSvc), middleware.RolesMiddleware(roles.ProjectAdmin))
+
+	departments.GET("", d.DepartmentList)
+	departments.POST("", d.CreateDepartment)
+	departments.PUT("/:id/details", d.UpdateDepartment)
+	departments.DELETE("/:id", d.DeleteDepartment)
+
+	groups := api.Group("/groups", middleware.AuthMiddleware(tokenSvc), middleware.RolesMiddleware(roles.ProjectAdmin))
+
+	groups.GET("", g.GroupList)
+	groups.POST("", g.CreateGroup)
+	groups.PUT("/:id/details", g.UpdateGroup)
+	groups.DELETE("/:id", g.DeleteGroup)
 
 }
