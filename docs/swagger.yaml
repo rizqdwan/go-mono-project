@@ -6,6 +6,13 @@ definitions:
       name:
         type: string
     type: object
+  github_com_rizqdwan_go-mono-project_internal_organization_group.GroupInfo:
+    properties:
+      label:
+        type: string
+      name:
+        type: string
+    type: object
   github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any:
     properties:
       data: {}
@@ -41,6 +48,38 @@ definitions:
     properties:
       data:
         $ref: '#/definitions/internal_auth.TokenResponse'
+      errors:
+        items:
+          type: string
+        type: array
+      message:
+        type: string
+      metaData:
+        additionalProperties: {}
+        type: object
+      status:
+        type: integer
+    type: object
+  github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_organization_department_DepartmentResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_organization_department.DepartmentResponse'
+      errors:
+        items:
+          type: string
+        type: array
+      message:
+        type: string
+      metaData:
+        additionalProperties: {}
+        type: object
+      status:
+        type: integer
+    type: object
+  github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_organization_group_GroupResponse:
+    properties:
+      data:
+        $ref: '#/definitions/internal_organization_group.GroupResponse'
       errors:
         items:
           type: string
@@ -189,6 +228,80 @@ definitions:
       token_type:
         type: string
     type: object
+  internal_organization_department.DepartmentResponse:
+    properties:
+      created_at:
+        type: string
+      group:
+        $ref: '#/definitions/github_com_rizqdwan_go-mono-project_internal_organization_group.GroupInfo'
+      id:
+        type: integer
+      label:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  internal_organization_department.NewDepartmentRequest:
+    properties:
+      group_id:
+        type: integer
+      label:
+        type: string
+      name:
+        type: string
+    required:
+    - group_id
+    - label
+    - name
+    type: object
+  internal_organization_department.UpdateDepartmentRequest:
+    properties:
+      group_id:
+        type: integer
+      label:
+        type: string
+      name:
+        type: string
+    required:
+    - group_id
+    - label
+    - name
+    type: object
+  internal_organization_group.GroupResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      label:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  internal_organization_group.NewGroupRequest:
+    properties:
+      label:
+        type: string
+      name:
+        type: string
+    required:
+    - label
+    - name
+    type: object
+  internal_organization_group.UpdateGroupRequest:
+    properties:
+      label:
+        type: string
+      name:
+        type: string
+    required:
+    - label
+    - name
+    type: object
   internal_user.ChangePasswordRequest:
     properties:
       confirm_password:
@@ -261,6 +374,8 @@ definitions:
       position:
         type: string
       role:
+        type: string
+      updated_at:
         type: string
     type: object
   internal_user.UserListResponse:
@@ -423,6 +538,296 @@ paths:
       summary: Register new user
       tags:
       - Auth
+  /departments:
+    get:
+      description: Get list of all departments with group details
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_organization_department_DepartmentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+      security:
+      - BearerAuth: []
+      summary: Get list of department
+      tags:
+      - Department
+    post:
+      consumes:
+      - application/json
+      description: Create a new department (ProjectAdmin only)
+      parameters:
+      - description: Create Department Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_organization_department.NewDepartmentRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_organization_department_DepartmentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+      security:
+      - BearerAuth: []
+      summary: Create a department
+      tags:
+      - Department
+  /departments/{id}:
+    delete:
+      description: Delete a department. Blocked if department has active users. (ProjectAdmin
+        only)
+      parameters:
+      - description: Department ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+      security:
+      - BearerAuth: []
+      summary: Delete a department
+      tags:
+      - Department
+  /departments/{id}/details:
+    put:
+      consumes:
+      - application/json
+      description: Update an existing department (ProjectAdmin only)
+      parameters:
+      - description: Department ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update Department Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_organization_department.UpdateDepartmentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_organization_department_DepartmentResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+      security:
+      - BearerAuth: []
+      summary: Update a department
+      tags:
+      - Department
+  /groups:
+    get:
+      description: Get list of all group
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_organization_group_GroupResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+      security:
+      - BearerAuth: []
+      summary: Get list of group
+      tags:
+      - Group
+    post:
+      consumes:
+      - application/json
+      description: Create a new group (ProjectAdmin only)
+      parameters:
+      - description: Create Group Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_organization_group.NewGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_organization_group_GroupResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+      security:
+      - BearerAuth: []
+      summary: Create a group
+      tags:
+      - Group
+  /groups/{id}:
+    delete:
+      description: Delete a group. Blocked if group has active departments. (ProjectAdmin
+        only)
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+      security:
+      - BearerAuth: []
+      summary: Delete a group
+      tags:
+      - Group
+  /groups/{id}/details:
+    put:
+      consumes:
+      - application/json
+      description: Update an existing group (ProjectAdmin only)
+      parameters:
+      - description: Group ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Update Group Request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/internal_organization_group.UpdateGroupRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-internal_organization_group_GroupResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/github_com_rizqdwan_go-mono-project_pkg_response.WebResponse-any'
+      security:
+      - BearerAuth: []
+      summary: Update a group
+      tags:
+      - Group
   /users/{id}:
     delete:
       description: ProjectAdmin soft-deletes a user from their department. Blocks
