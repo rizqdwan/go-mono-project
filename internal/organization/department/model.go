@@ -7,12 +7,12 @@ import (
 )
 
 type Department struct {
-	ID         int64     `db:"id"`
-	Label      string    `db:"label"`
-	Name       string    `db:"name"`
-	Group_id   int64     `db:"group_id"`
-	Created_at time.Time `db:"created_at"`
-	Updated_at time.Time `db:"updated_at"`
+	ID        int64     `db:"id"`
+	Label     string    `db:"label"`
+	Name      string    `db:"name"`
+	GroupID   int64     `db:"group_id"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 }
 
 // @name DepartmentResponse
