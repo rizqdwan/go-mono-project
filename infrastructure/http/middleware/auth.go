@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/labstack/echo/v5"
-	"github.com/rizqdwan/go-mono-project/pkg/response"
 	"github.com/rizqdwan/go-mono-project/pkg/token"
 )
 
@@ -59,7 +58,7 @@ func RolesMiddleware(allowedRoles ...string) echo.MiddlewareFunc {
 func GetUserID(c *echo.Context) (int64, error) {
 	userID, ok := c.Get("userID").(int64)
 	if !ok || userID == 0 {
-		return 0, response.Error(c, http.StatusUnauthorized, "missing user identity", nil)
+		return 0, echo.NewHTTPError(http.StatusUnauthorized, "missing user identity")
 	}
 	return userID, nil
 }
