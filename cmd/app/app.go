@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+
 	"github.com/labstack/echo/v5"
 	"github.com/rizqdwan/go-mono-project/config"
 	_ "github.com/rizqdwan/go-mono-project/docs"
@@ -21,7 +23,7 @@ type application struct {
 	database *db.Database
 }
 
-func newApplication(cfg *config.Config) (*application, error) {
+func newApplication(ctx context.Context, cfg *config.Config) (*application, error) {
 	database, err := db.NewDatabase(cfg.DB)
 	if err != nil {
 		return nil, err
@@ -35,7 +37,7 @@ func newApplication(cfg *config.Config) (*application, error) {
 	departmentRepo := department.NewRepository(database.DB)
 	groupRepo := group.NewRepository(database.DB)
 
-	authSvc := auth.NewService(authRepo, userRepo, tokenSvc, passwordSvc)
+	authSvc := auth.NewService(ctx, authRepo, userRepo, tokenSvc, passwordSvc)
 	userSvc := user.NewService(userRepo, tokenSvc, passwordSvc, authRepo, cfg.Role)
 	deptSvc := department.NewService(departmentRepo, groupRepo)
 	groupSvc := group.NewService(groupRepo)
@@ -43,6 +45,8 @@ func newApplication(cfg *config.Config) (*application, error) {
 	e := echo.New()
 	e.Validator = validator.New()
 	e.HTTPErrorHandler = middleware.ErrorHandler
+	e.Use(middleware.RequestIDMiddleware())
+	e.Use(middleware.LoggingMiddleware())
 
 	handlers := &infrahttp.Handlers{
 		Auth:       auth.NewHandler(authSvc),
