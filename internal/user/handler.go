@@ -6,6 +6,7 @@ import (
 
 	"github.com/labstack/echo/v5"
 	"github.com/rizqdwan/go-mono-project/infrastructure/http/middleware"
+	"github.com/rizqdwan/go-mono-project/pkg/pagination"
 	"github.com/rizqdwan/go-mono-project/pkg/response"
 )
 
@@ -33,12 +34,19 @@ func (h *Handler) UserList(c *echo.Context) error {
 		return err
 	}
 
-	resp, err := h.svc.ListUser(c.Request().Context(), userID)
+	page, _ := strconv.Atoi(c.QueryParam("page"))
+	size, _ := strconv.Atoi(c.QueryParam("size"))
+	p := pagination.NewParams(page, size)
+
+	users, total, err := h.svc.ListUser(c.Request().Context(), userID, p)
 	if err != nil {
 		return err
 	}
 
-	return response.Success(c, http.StatusOK, "user list retrieved successfully", resp)
+	totalPages := (total + p.Size - 1) / p.Size
+	meta := response.PaginationMeta(p.Page, p.Size, total, totalPages, p.Page >= totalPages)
+
+	return response.SuccessWithData(c, http.StatusOK, "user list retrieved successfully", users, meta)
 }
 
 // UserDetails godoc

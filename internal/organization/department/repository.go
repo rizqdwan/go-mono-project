@@ -5,10 +5,12 @@ import (
 	"database/sql"
 	"errors"
 	"time"
+
+	"github.com/rizqdwan/go-mono-project/pkg/pagination"
 )
 
 type Repository interface {
-	FindAllDepartments(ctx context.Context) ([]DepartmentResponse, error)
+	FindAllDepartments(ctx context.Context, p pagination.Params) ([]DepartmentResponse, int, error)
 	FindDepartmentByID(ctx context.Context, id int64) (*Department, error)
 	FindDepartmentByLabel(ctx context.Context, label string) (*Department, error)
 	FindDepartmentsByGroupID(ctx context.Context, groupID int64) ([]DepartmentResponse, error)
@@ -26,15 +28,23 @@ func NewRepository(db *sql.DB) Repository {
 	return &repository{db: db}
 }
 
-func (r *repository) FindAllDepartments(ctx context.Context) ([]DepartmentResponse, error) {
+func (r *repository) FindAllDepartments(ctx context.Context, p pagination.Params) ([]DepartmentResponse, int, error) {
+	var total int
+	countQuery := `SELECT COUNT(*) FROM department`
+	if err := r.db.QueryRowContext(ctx, countQuery, p).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
 	query := `
 		SELECT d.id, d.label, d.name, g.label, g.name, d.created_at, d.updated_at 
 			FROM departments d
 			JOIN groups g ON g.id = d.group_id
+		ORDER BY d.created_at DESC
+		LIMIT $1 OFFSET $2
     `
-	rows, err := r.db.QueryContext(ctx, query)
+	rows, err := r.db.QueryContext(ctx, query, p.Size, p.Offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -50,11 +60,11 @@ func (r *repository) FindAllDepartments(ctx context.Context) ([]DepartmentRespon
 			&d.CreatedAt,
 			&d.UpdatedAt,
 		); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		resp = append(resp, d)
 	}
-	return resp, rows.Err()
+	return resp, total, rows.Err()
 
 }
 

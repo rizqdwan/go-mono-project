@@ -4,10 +4,11 @@ import (
 	"context"
 
 	commonErrors "github.com/rizqdwan/go-mono-project/internal/common/errors"
+	"github.com/rizqdwan/go-mono-project/pkg/pagination"
 )
 
 type Service interface {
-	ListGroup(ctx context.Context) ([]GroupResponse, error)
+	ListGroup(ctx context.Context, p pagination.Params) ([]GroupResponse, int, error)
 	CreateGroup(ctx context.Context, req NewGroupRequest) (GroupResponse, error)
 	UpdateGroup(ctx context.Context, id int64, req UpdateGroupRequest) (GroupResponse, error)
 	DeleteGroup(ctx context.Context, id int64) error
@@ -25,12 +26,12 @@ func NewService(groupRepo Repository) Service {
 	return s
 }
 
-func (s *service) ListGroup(ctx context.Context) ([]GroupResponse, error) {
-	group, err := s.groupRepo.FindAllGroups(ctx)
+func (s *service) ListGroup(ctx context.Context, p pagination.Params) ([]GroupResponse, int, error) {
+	group, total, err := s.groupRepo.FindAllGroups(ctx, p)
 	if err != nil {
-		return nil, commonErrors.InternalServerError("failed to fetch group", err)
+		return nil, 0, commonErrors.InternalServerError("failed to fetch group", err)
 	}
-	return group, nil
+	return group, total, nil
 }
 
 func (s *service) CreateGroup(ctx context.Context, req NewGroupRequest) (GroupResponse, error) {

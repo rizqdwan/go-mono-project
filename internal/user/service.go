@@ -2,12 +2,12 @@ package user
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/rizqdwan/go-mono-project/config"
 	"github.com/rizqdwan/go-mono-project/infrastructure/security"
 	commonErrors "github.com/rizqdwan/go-mono-project/internal/common/errors"
 	"github.com/rizqdwan/go-mono-project/internal/user/role"
+	"github.com/rizqdwan/go-mono-project/pkg/pagination"
 	"github.com/rizqdwan/go-mono-project/pkg/token"
 )
 
@@ -16,7 +16,7 @@ type SessionDeactivator interface {
 }
 
 type Service interface {
-	ListUser(ctx context.Context, userID int64) ([]UserListResponse, error)
+	ListUser(ctx context.Context, userID int64, p pagination.Params) ([]UserListResponse, int, error)
 	UserDetails(ctx context.Context, userID int64) (*UserDetailsResponse, error)
 	UpdateUserDetails(ctx context.Context, adminID int64, targetUserID int64, req UpdateUserDetailsRequest) (*UserDetailsResponse, error)
 	ChangePassword(ctx context.Context, userID int64, req ChangePasswordRequest) (ChangePasswordResponse, error)
@@ -44,22 +44,22 @@ func NewService(userRepo Repository, tokenSvc *token.Service, passwordSvc securi
 	return s
 }
 
-func (s *service) ListUser(ctx context.Context, userID int64) ([]UserListResponse, error) {
+func (s *service) ListUser(ctx context.Context, userID int64, p pagination.Params) ([]UserListResponse, int, error) {
 	admin, err := s.userRepo.FindByID(ctx, userID)
 	if err != nil {
-		return nil, commonErrors.NotFoundError(ErrUserNotFound.Error(), err)
+		return nil, 0, commonErrors.NotFoundError(ErrUserNotFound.Error(), err)
 	}
 
-	users, err := s.userRepo.FindUsersByDepartmentID(ctx, admin.DepartmentID)
+	users, total, err := s.userRepo.FindUsersByDepartmentID(ctx, admin.DepartmentID, p)
 	if err != nil {
-		return nil, commonErrors.InternalServerError("failed to fetch users", err)
+		return nil, 0, commonErrors.InternalServerError("failed to fetch users", err)
 	}
 
 	for i := range users {
 		users[i].Role = role.FormatRoleName(users[i].Role)
 	}
 
-	return users, nil
+	return users, total, nil
 }
 
 func (s *service) UserDetails(ctx context.Context, userID int64) (*UserDetailsResponse, error) {
@@ -99,12 +99,13 @@ func (s *service) UpdateUserDetails(ctx context.Context, adminID int64, targetUs
 		}
 	}
 
+	if req.Role == s.roles.ProjectAdmin {
+		return nil, commonErrors.ForbiddenError(ErrCannotDeleteAdmin.Error(), ErrCannotDeleteAdmin)
+	}
+
 	roleID, err := s.userRepo.FindRoleByName(ctx, req.Role)
 	if err != nil {
 		return nil, commonErrors.NotFoundError(ErrRoleNotFound.Error(), err)
-	}
-	if req.Role == s.roles.ProjectAdmin {
-		return nil, commonErrors.ForbiddenError(ErrCannotDeleteAdmin.Error(), ErrCannotDeleteAdmin)
 	}
 
 	positionID, err := s.userRepo.FindPositionByLabel(ctx, req.Position)
@@ -126,9 +127,6 @@ func (s *service) UpdateUserDetails(ctx context.Context, adminID int64, targetUs
 	if err != nil {
 		return nil, commonErrors.InternalServerError("failed to fetch updated user", err)
 	}
-
-	fmt.Printf("UPDATED: %+v\n", updated)
-	fmt.Printf("ERR: %+v\n", err)
 
 	updated.Role = role.FormatRoleName(updated.Role)
 	return updated, nil

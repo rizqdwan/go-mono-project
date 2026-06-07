@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"time"
+
+	"github.com/rizqdwan/go-mono-project/pkg/pagination"
 )
 
 type Repository interface {
@@ -16,7 +18,7 @@ type Repository interface {
 	FindRoleByName(ctx context.Context, name string) (int64, error)
 	FindRoleNameByID(ctx context.Context, roleID int64) (string, error)
 	FindPositionByLabel(ctx context.Context, label string) (string, error)
-	FindUsersByDepartmentID(ctx context.Context, departmentID int64) ([]UserListResponse, error)
+	FindUsersByDepartmentID(ctx context.Context, departmentID int64, p pagination.Params) ([]UserListResponse, int, error)
 	FindUserDetailsByID(ctx context.Context, userID int64) (*UserDetailsResponse, error)
 	DeactivateUser(ctx context.Context, userID int64) error
 	HasActiveProjectAssignments(ctx context.Context, userID int64) (bool, error)
@@ -182,7 +184,15 @@ func (r *repository) FindUserDetailsByID(ctx context.Context, userID int64) (*Us
 	return &resp, nil
 }
 
-func (r *repository) FindUsersByDepartmentID(ctx context.Context, departmentID int64) ([]UserListResponse, error) {
+func (r *repository) FindUsersByDepartmentID(ctx context.Context, departmentID int64, p pagination.Params) ([]UserListResponse, int, error) {
+	var total int
+	countQuery := `
+			SELECT COUNT(*) FROM users WHERE department_id = $1
+    `
+	if err := r.db.QueryRowContext(ctx, countQuery, departmentID).Scan(&total); err != nil {
+		return nil, 0, err
+	}
+
 	query := `
         SELECT u.id, u.email, u.name, ur.name , d.label, d.name, up.name , u.created_at
         FROM users u
@@ -190,10 +200,12 @@ func (r *repository) FindUsersByDepartmentID(ctx context.Context, departmentID i
         JOIN departments d ON d.id = u.department_id
         JOIN user_positions up ON up.id = u.position_id
         WHERE u.department_id = $1
+        ORDER BY u.created_at DESC
+        LIMIT $2 OFFSET $3
     `
-	rows, err := r.db.QueryContext(ctx, query, departmentID)
+	rows, err := r.db.QueryContext(ctx, query, departmentID, p.Size, p.Offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
@@ -210,12 +222,12 @@ func (r *repository) FindUsersByDepartmentID(ctx context.Context, departmentID i
 			&u.Position,
 			&u.CreatedAt,
 		); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		resp = append(resp, u)
 	}
 
-	return resp, rows.Err()
+	return resp, total, rows.Err()
 }
 
 func (r *repository) DeactivateUser(ctx context.Context, userID int64) error {

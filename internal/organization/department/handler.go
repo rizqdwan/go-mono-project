@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v5"
+	"github.com/rizqdwan/go-mono-project/pkg/pagination"
 	"github.com/rizqdwan/go-mono-project/pkg/response"
 )
 
@@ -27,12 +28,19 @@ func NewHandler(svc Service) *Handler {
 // @Failure      401      {object}  response.WebResponse[any]
 // @Router       /departments [get]
 func (h *Handler) DepartmentList(c *echo.Context) error {
-	resp, err := h.svc.ListDepartments(c.Request().Context())
+	page, _ := strconv.Atoi(c.QueryParam("page"))
+	size, _ := strconv.Atoi(c.QueryParam("size"))
+	p := pagination.NewParams(page, size)
+
+	departments, total, err := h.svc.ListDepartments(c.Request().Context(), p)
 	if err != nil {
 		return err
 	}
 
-	return response.Success(c, http.StatusOK, "department list retrieved successfully", resp)
+	totalPages := (total + p.Size - 1) / p.Size
+	meta := response.PaginationMeta(p.Page, p.Size, total, totalPages, p.Page >= totalPages)
+
+	return response.SuccessWithData(c, http.StatusOK, "department list retrieved successfully", departments, meta)
 }
 
 // CreateDepartment godoc

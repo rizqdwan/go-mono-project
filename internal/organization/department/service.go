@@ -5,10 +5,11 @@ import (
 
 	commonErrors "github.com/rizqdwan/go-mono-project/internal/common/errors"
 	"github.com/rizqdwan/go-mono-project/internal/organization/group"
+	"github.com/rizqdwan/go-mono-project/pkg/pagination"
 )
 
 type Service interface {
-	ListDepartments(ctx context.Context) ([]DepartmentResponse, error)
+	ListDepartments(ctx context.Context, p pagination.Params) ([]DepartmentResponse, int, error)
 	CreateDepartment(ctx context.Context, req NewDepartmentRequest) (DepartmentResponse, error)
 	UpdateDepartment(ctx context.Context, id int64, req UpdateDepartmentRequest) (DepartmentResponse, error)
 	DeleteDepartment(ctx context.Context, id int64) error
@@ -28,12 +29,12 @@ func NewService(departmentRepo Repository, groupRepo group.Repository) Service {
 	return s
 }
 
-func (s *service) ListDepartments(ctx context.Context) ([]DepartmentResponse, error) {
-	department, err := s.departmentRepo.FindAllDepartments(ctx)
+func (s *service) ListDepartments(ctx context.Context, p pagination.Params) ([]DepartmentResponse, int, error) {
+	department, total, err := s.departmentRepo.FindAllDepartments(ctx, p)
 	if err != nil {
-		return nil, commonErrors.InternalServerError("failed to fetch departments", err)
+		return nil, 0, commonErrors.InternalServerError("failed to fetch departments", err)
 	}
-	return department, nil
+	return department, total, nil
 }
 
 func (s *service) CreateDepartment(ctx context.Context, req NewDepartmentRequest) (DepartmentResponse, error) {
