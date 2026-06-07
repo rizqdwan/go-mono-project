@@ -21,7 +21,10 @@ func main() {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
 
-	app, err := newApplication(cfg)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	app, err := newApplication(ctx, cfg)
 	if err != nil {
 		log.Fatalf("Failed to initialize application: %v", err)
 	}
@@ -44,13 +47,13 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
+	cancel()
 
 	log.Println("Shutting down server...")
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	if err := srv.Shutdown(ctx); err != nil {
+	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Fatal(err)
 	}
 
