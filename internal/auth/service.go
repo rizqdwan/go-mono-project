@@ -8,13 +8,14 @@ import (
 
 	"github.com/rizqdwan/go-mono-project/infrastructure/security"
 	commonErrors "github.com/rizqdwan/go-mono-project/internal/common/errors"
+	"github.com/rizqdwan/go-mono-project/internal/organization/department"
 	"github.com/rizqdwan/go-mono-project/internal/user"
 	"github.com/rizqdwan/go-mono-project/pkg/token"
 )
 
 type Service interface {
 	Login(ctx context.Context, req LoginRequest, browserInfo string) (*TokenResponse, error)
-	Register(ctx context.Context, adminID int64, req RegisterRequest) (*user.UserResponse, error)
+	Register(ctx context.Context, adminID int64, req RegisterRequest) (*RegisterResponse, error)
 	Logout(ctx context.Context, refreshToken string) error
 	RenewToken(ctx context.Context, req RefreshTokenRequest, browserInfo string) (*TokenResponse, error)
 }
@@ -28,7 +29,7 @@ type service struct {
 	passwordSvc security.PasswordHash
 }
 
-func NewService(authRepo Repository, userRepo user.Repository, tokenSvc *token.Service, passwordSvc security.PasswordHash) Service {
+func NewService(ctx context.Context, authRepo Repository, userRepo user.Repository, tokenSvc *token.Service, passwordSvc security.PasswordHash) Service {
 	s := &service{
 		authRepo:    authRepo,
 		userRepo:    userRepo,
@@ -36,11 +37,11 @@ func NewService(authRepo Repository, userRepo user.Repository, tokenSvc *token.S
 		passwordSvc: passwordSvc,
 	}
 
-	go s.startSessionCleanup()
+	go s.startSessionCleanup(ctx)
 	return s
 }
 
-func (s *service) Register(ctx context.Context, adminID int64, req RegisterRequest) (*user.UserResponse, error) {
+func (s *service) Register(ctx context.Context, adminID int64, req RegisterRequest) (*RegisterResponse, error) {
 	if req.Password != req.ConfirmPassword {
 		return nil, commonErrors.InvariantError(ErrPasswordMismatch.Error(), ErrPasswordMismatch)
 	}
@@ -92,14 +93,22 @@ func (s *service) Register(ctx context.Context, adminID int64, req RegisterReque
 		return nil, commonErrors.InternalServerError("failed to create user", err)
 	}
 
-	return &user.UserResponse{
-		ID:         u.ID,
-		Name:       u.Name,
-		Email:      u.Email,
-		Role:       req.Role,
-		Department: req.Department,
-		Position:   posID,
-		CreatedAt:  u.CreatedAt,
+	details, err := s.userRepo.FindUserDetailsByID(ctx, u.ID)
+	if err != nil {
+		return nil, commonErrors.InternalServerError("failed to fetch registered user", err)
+	}
+
+	return &RegisterResponse{
+		ID:    u.ID,
+		Email: u.Email,
+		Name:  u.Name,
+		Role:  req.Role,
+		Department: department.DepartmentInfo{
+			Label: details.Department.Label,
+			Name:  details.Department.Name,
+		},
+		Position:  posID,
+		CreatedAt: u.CreatedAt,
 	}, nil
 }
 
@@ -128,7 +137,7 @@ func (s *service) Login(ctx context.Context, req LoginRequest, browserInfo strin
 
 	for _, session := range activeSessions {
 		if session.BrowserInfo != browserInfo {
-			return nil, commonErrors.ConflictError(ErrSessionInactive.Error(), ErrSessionInactive)
+			return nil, commonErrors.ConflictError(ErrSessionConflict.Error(), ErrSessionConflict)
 		}
 	}
 
@@ -284,26 +293,27 @@ func (s *service) enforceMaxActiveSessions(ctx context.Context, userID int64) er
 	return nil
 }
 
-func (s *service) startSessionCleanup() {
+func (s *service) startSessionCleanup(ctx context.Context) {
 	interval := s.tokenSvc.RefreshTTL()
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		ctx := context.Background()
-		cutoff := time.Now().Add(-interval)
-
-		sessions, err := s.authRepo.FindExpiredActiveSessions(ctx, cutoff, 100)
-		if err != nil {
-			continue
-		}
-
-		for _, session := range sessions {
-			if _, err := s.tokenSvc.ValidateRefreshToken(session.RefreshToken); err != nil {
-				_ = s.authRepo.DeactivateSession(ctx, session.ID)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			cutoff := time.Now().Add(-interval)
+			sessions, err := s.authRepo.FindExpiredActiveSessions(ctx, cutoff, 100)
+			if err != nil {
+				continue
 			}
+			for _, session := range sessions {
+				if _, err := s.tokenSvc.ValidateRefreshToken(session.RefreshToken); err != nil {
+					_ = s.authRepo.DeactivateSession(ctx, session.ID)
+				}
+			}
+			_ = s.authRepo.DeleteInactiveSessionsOlderThan(ctx, time.Now().AddDate(0, 0, -7))
 		}
-
-		_ = s.authRepo.DeleteInactiveSessionsOlderThan(ctx, time.Now().AddDate(0, 0, -7))
 	}
 }
