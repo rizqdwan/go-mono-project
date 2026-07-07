@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS authentication_sessions (
     is_active     BOOLEAN   DEFAULT TRUE,
     browser_info  TEXT,
     created_at    TIMESTAMP DEFAULT NOW(),
-    last_activity TIMESTAMP DEFAULT NOW()
+    last_activity TIMESTAMP DEFAULT NOW(),
+    expires_at    TIMESTAMP DEFAULT NOW()
 );
 
 CREATE INDEX idx_auth_sessions_user_id            ON authentication_sessions(user_id);
