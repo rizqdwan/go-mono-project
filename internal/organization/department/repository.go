@@ -30,8 +30,8 @@ func NewRepository(db *sql.DB) Repository {
 
 func (r *repository) FindAllDepartments(ctx context.Context, p pagination.Params) ([]DepartmentResponse, int, error) {
 	var total int
-	countQuery := `SELECT COUNT(*) FROM department`
-	if err := r.db.QueryRowContext(ctx, countQuery, p).Scan(&total); err != nil {
+	countQuery := `SELECT COUNT(*) FROM departments`
+	if err := r.db.QueryRowContext(ctx, countQuery).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 
