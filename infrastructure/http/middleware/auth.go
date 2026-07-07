@@ -13,10 +13,14 @@ func AuthMiddleware(tokenService *token.Service) echo.MiddlewareFunc {
 		return func(c *echo.Context) error {
 
 			authHeader := c.Request().Header.Get("Authorization")
-			if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+
+			parts := strings.Fields(authHeader)
+
+			if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
 				return echo.NewHTTPError(http.StatusUnauthorized, "missing or invalid authorization header")
 			}
-			tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+
+			tokenStr := parts[1]
 
 			claims, err := tokenService.ValidateAccessToken(tokenStr)
 			if err != nil {
@@ -27,6 +31,8 @@ func AuthMiddleware(tokenService *token.Service) echo.MiddlewareFunc {
 					return echo.NewHTTPError(http.StatusUnauthorized, "invalid token")
 				}
 			}
+
+			c.Set("claims", claims)
 
 			c.Set("userID", claims.UserID)
 			c.Set("email", claims.Email)
