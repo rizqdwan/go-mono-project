@@ -12,6 +12,7 @@ type Authentication struct {
 	RefreshToken string    `db:"refresh_token"`
 	IsActive     bool      `db:"is_active"`
 	BrowserInfo  string    `db:"browser_info"`
+	ExpiresAt    time.Time `db:"expires_at"`
 	CreatedAt    time.Time `db:"created_at"`
 	LastActivity time.Time `db:"last_activity"`
 }
