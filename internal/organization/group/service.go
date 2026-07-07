@@ -2,6 +2,7 @@ package group
 
 import (
 	"context"
+	"errors"
 
 	commonErrors "github.com/rizqdwan/go-mono-project/internal/common/errors"
 	"github.com/rizqdwan/go-mono-project/pkg/pagination"
@@ -40,6 +41,10 @@ func (s *service) CreateGroup(ctx context.Context, req NewGroupRequest) (GroupRe
 		return GroupResponse{}, commonErrors.ConflictError(ErrGroupLabelExists.Error(), ErrGroupLabelExists)
 	}
 
+	if err != nil && !errors.Is(err, ErrGroupNotFound) {
+		return GroupResponse{}, commonErrors.InternalServerError("failed to group label", err)
+	}
+
 	g := &Group{
 		Label: req.Label,
 		Name:  req.Label,
@@ -62,13 +67,20 @@ func (s *service) CreateGroup(ctx context.Context, req NewGroupRequest) (GroupRe
 func (s *service) UpdateGroup(ctx context.Context, id int64, req UpdateGroupRequest) (GroupResponse, error) {
 	group, err := s.groupRepo.FindGroupByID(ctx, id)
 	if err != nil {
-		return GroupResponse{}, commonErrors.NotFoundError(ErrGroupNotFound.Error(), ErrGroupNotFound)
+		if errors.Is(err, ErrGroupNotFound) {
+			return GroupResponse{}, commonErrors.NotFoundError(ErrGroupNotFound.Error(), ErrGroupNotFound)
+		}
+		return GroupResponse{}, commonErrors.InternalServerError("failed to fetch group", err)
 	}
 
 	if req.Label != group.Label {
-		exisiting, err := s.groupRepo.FindGroupByLabel(ctx, req.Label)
-		if err == nil && exisiting != nil {
+		existing, err := s.groupRepo.FindGroupByLabel(ctx, req.Label)
+		if err == nil && existing != nil {
 			return GroupResponse{}, commonErrors.ConflictError(ErrGroupLabelExists.Error(), ErrGroupLabelExists)
+		}
+
+		if err != nil && !errors.Is(err, ErrGroupNotFound) {
+			return GroupResponse{}, commonErrors.InternalServerError("failed to group label", err)
 		}
 	}
 
@@ -92,12 +104,15 @@ func (s *service) UpdateGroup(ctx context.Context, id int64, req UpdateGroupRequ
 func (s *service) DeleteGroup(ctx context.Context, id int64) error {
 	_, err := s.groupRepo.FindGroupByID(ctx, id)
 	if err != nil {
-		return commonErrors.NotFoundError(ErrGroupNotFound.Error(), ErrGroupNotFound)
+		if errors.Is(err, ErrGroupNotFound) {
+			return commonErrors.NotFoundError(ErrGroupNotFound.Error(), ErrGroupNotFound)
+		}
+		return commonErrors.InternalServerError("failed to fetch group", err)
 	}
 
 	hasDepartment, err := s.groupRepo.HasActiveDepartment(ctx, id)
 	if err != nil {
-		return commonErrors.InternalServerError("failed to check if group is active", ErrGroupNotFound)
+		return commonErrors.InternalServerError("failed to check if group is active", err)
 	}
 	if hasDepartment {
 		return commonErrors.ConflictError(ErrGroupHasActiveDepartment.Error(), ErrGroupHasActiveDepartment)

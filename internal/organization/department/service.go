@@ -2,6 +2,7 @@ package department
 
 import (
 	"context"
+	"errors"
 
 	commonErrors "github.com/rizqdwan/go-mono-project/internal/common/errors"
 	"github.com/rizqdwan/go-mono-project/internal/organization/group"
@@ -43,9 +44,16 @@ func (s *service) CreateDepartment(ctx context.Context, req NewDepartmentRequest
 		return DepartmentResponse{}, commonErrors.ConflictError(ErrDepartmentLabelExists.Error(), ErrDepartmentLabelExists)
 	}
 
+	if err != nil && !errors.Is(err, ErrDepartmentNotFound) {
+		return DepartmentResponse{}, commonErrors.InternalServerError("failed to check department label", err)
+	}
+
 	g, err := s.groupRepo.FindGroupByID(ctx, req.GroupID)
 	if err != nil {
-		return DepartmentResponse{}, commonErrors.NotFoundError(group.ErrGroupNotFound.Error(), group.ErrGroupNotFound)
+		if errors.Is(err, group.ErrGroupNotFound) {
+			return DepartmentResponse{}, commonErrors.NotFoundError(group.ErrGroupNotFound.Error(), group.ErrGroupNotFound)
+		}
+		return DepartmentResponse{}, commonErrors.InternalServerError("failed to fetch group", err)
 	}
 
 	d := &Department{
@@ -74,27 +82,30 @@ func (s *service) CreateDepartment(ctx context.Context, req NewDepartmentRequest
 func (s *service) UpdateDepartment(ctx context.Context, id int64, req UpdateDepartmentRequest) (DepartmentResponse, error) {
 	dept, err := s.departmentRepo.FindDepartmentByID(ctx, id)
 	if err != nil {
-		return DepartmentResponse{}, commonErrors.NotFoundError(ErrDepartmentNotFound.Error(), ErrDepartmentNotFound)
+		if errors.Is(err, ErrDepartmentNotFound) {
+			return DepartmentResponse{}, commonErrors.NotFoundError(ErrDepartmentNotFound.Error(), ErrDepartmentNotFound)
+		}
+		return DepartmentResponse{}, commonErrors.InternalServerError("failed to fetch department", err)
 	}
 
 	if req.Label != dept.Label {
-		exisiting, err := s.departmentRepo.FindDepartmentByLabel(ctx, req.Label)
-		if err == nil && exisiting != nil {
+		existing, err := s.departmentRepo.FindDepartmentByLabel(ctx, req.Label)
+
+		if err == nil && existing != nil {
 			return DepartmentResponse{}, commonErrors.ConflictError(ErrDepartmentLabelExists.Error(), ErrDepartmentLabelExists)
+		}
+
+		if err != nil && !errors.Is(err, ErrDepartmentNotFound) {
+			return DepartmentResponse{}, commonErrors.InternalServerError("failed to check department label", err)
 		}
 	}
 
-	var g *group.Group
-	if req.GroupID != dept.GroupID {
-		g, err = s.groupRepo.FindGroupByID(ctx, req.GroupID)
-		if err != nil {
+	g, err := s.groupRepo.FindGroupByID(ctx, req.GroupID)
+	if err != nil {
+		if errors.Is(err, group.ErrGroupNotFound) {
 			return DepartmentResponse{}, commonErrors.NotFoundError(group.ErrGroupNotFound.Error(), group.ErrGroupNotFound)
 		}
-	} else {
-		g, err = s.groupRepo.FindGroupByID(ctx, req.GroupID)
-		if err != nil {
-			return DepartmentResponse{}, commonErrors.InternalServerError("failed to fetch group", err)
-		}
+		return DepartmentResponse{}, commonErrors.InternalServerError("failed to fetch group", err)
 	}
 
 	dept.Label = req.Label
@@ -117,13 +128,15 @@ func (s *service) UpdateDepartment(ctx context.Context, id int64, req UpdateDepa
 		CreatedAt: dept.CreatedAt,
 		UpdatedAt: updatedAt,
 	}, nil
-
 }
 
 func (s *service) DeleteDepartment(ctx context.Context, id int64) error {
 	_, err := s.departmentRepo.FindDepartmentByID(ctx, id)
 	if err != nil {
-		return commonErrors.NotFoundError(ErrDepartmentNotFound.Error(), ErrDepartmentNotFound)
+		if errors.Is(err, ErrDepartmentNotFound) {
+			return commonErrors.NotFoundError(ErrDepartmentNotFound.Error(), ErrDepartmentNotFound)
+		}
+		return commonErrors.InternalServerError("failed to fetch department", err)
 	}
 
 	hasUsers, err := s.departmentRepo.HasActiveUsers(ctx, id)
