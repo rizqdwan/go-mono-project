@@ -17,7 +17,7 @@ type Repository interface {
 	UpdatePassword(ctx context.Context, userID int64, hashedPassword string) (time.Time, error)
 	FindRoleByName(ctx context.Context, name string) (int64, error)
 	FindRoleNameByID(ctx context.Context, roleID int64) (string, error)
-	FindPositionByLabel(ctx context.Context, label string) (string, error)
+	FindPositionByID(ctx context.Context, id string) (string, error)
 	FindUsersByDepartmentID(ctx context.Context, departmentID int64, p pagination.Params) ([]UserListResponse, int, error)
 	FindUserDetailsByID(ctx context.Context, userID int64) (*UserDetailsResponse, error)
 	DeactivateUser(ctx context.Context, userID int64) error
@@ -138,18 +138,18 @@ func (r *repository) FindRoleNameByID(ctx context.Context, roleID int64) (string
 	return name, err
 }
 
-func (r *repository) FindPositionByLabel(ctx context.Context, label string) (string, error) {
+func (r *repository) FindPositionByID(ctx context.Context, id string) (string, error) {
 	query := `
         SELECT id FROM user_positions
         WHERE id = $1
         LIMIT 1
     `
-	var id string
-	err := r.db.QueryRowContext(ctx, query, label).Scan(&id)
+	var ids string
+	err := r.db.QueryRowContext(ctx, query, id).Scan(&ids)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrPositionNotFound
 	}
-	return id, err
+	return ids, err
 }
 
 func (r *repository) FindUserDetailsByID(ctx context.Context, userID int64) (*UserDetailsResponse, error) {
