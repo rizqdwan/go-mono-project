@@ -9,10 +9,16 @@ import (
 )
 
 var (
-	ErrInvalidToken   = errors.New("Invalid token")
-	ErrExpiredToken   = errors.New("Token has expired")
-	ErrUnexpectedSign = errors.New("Unexpected signing method")
-	ErrMalformedToken = errors.New("Malformed token")
+	ErrInvalidToken   = errors.New("invalid token")
+	ErrExpiredToken   = errors.New("token has expired")
+	ErrUnexpectedSign = errors.New("unexpected signing method")
+	ErrMalformedToken = errors.New("malformed token")
+	ErrInvalidType    = errors.New("invalid token type")
+)
+
+const (
+	TokenTypeAccess  = "access"
+	TokenTypeRefresh = "refresh"
 )
 
 type Service struct {
@@ -22,14 +28,16 @@ type Service struct {
 }
 
 type AccessClaims struct {
-	UserID int64  `json:"user_id"`
-	Email  string `json:"email"`
-	Role   string `json:"role"`
+	UserID    int64  `json:"user_id"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	TokenType string `json:"token_type"`
 	jwt.RegisteredClaims
 }
 
 type RefreshClaims struct {
-	UserID int64 `json:"user_id"`
+	UserID    int64  `json:"user_id"`
+	TokenType string `json:"token_type"`
 	jwt.RegisteredClaims
 }
 
@@ -50,13 +58,16 @@ func (s *Service) RefreshTTL() time.Duration {
 }
 
 func (s *Service) GenerateAccessToken(userID int64, email, role string) (string, error) {
+	now := time.Now()
+
 	claims := AccessClaims{
-		UserID: userID,
-		Email:  email,
-		Role:   role,
+		UserID:    userID,
+		Email:     email,
+		Role:      role,
+		TokenType: TokenTypeAccess,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.accessTTL)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(s.accessTTL)),
 		},
 	}
 
@@ -66,11 +77,14 @@ func (s *Service) GenerateAccessToken(userID int64, email, role string) (string,
 }
 
 func (s *Service) GenerateRefreshToken(userID int64) (string, error) {
+	now := time.Now()
+
 	claims := RefreshClaims{
-		UserID: userID,
+		UserID:    userID,
+		TokenType: TokenTypeRefresh,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.refreshTTL)),
-			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(s.refreshTTL)),
 		},
 	}
 
@@ -83,27 +97,21 @@ func (s *Service) ValidateAccessToken(tokenStr string) (*AccessClaims, error) {
 	token, err := jwt.ParseWithClaims(
 		tokenStr,
 		&AccessClaims{},
-		func(t *jwt.Token) (interface{}, error) {
-			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, errors.New("unexpected signing method")
-			}
-			return s.secret, nil
-		},
+		s.keyFunc,
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
 	)
 
 	if err != nil {
-		if errors.Is(err, jwt.ErrTokenExpired) {
-			return nil, ErrExpiredToken
-		}
-		if errors.Is(err, jwt.ErrTokenMalformed) {
-			return nil, ErrMalformedToken
-		}
-		return nil, ErrInvalidToken
+		return nil, mapJWTError(err)
 	}
 
 	claims, ok := token.Claims.(*AccessClaims)
 	if !ok || !token.Valid {
 		return nil, ErrInvalidToken
+	}
+
+	if claims.TokenType != TokenTypeAccess {
+		return nil, ErrInvalidType
 	}
 
 	return claims, nil
@@ -113,23 +121,39 @@ func (s *Service) ValidateRefreshToken(tokenStr string) (*RefreshClaims, error) 
 	token, err := jwt.ParseWithClaims(
 		tokenStr,
 		&RefreshClaims{},
-		func(t *jwt.Token) (interface{}, error) {
-			if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, ErrUnexpectedSign
-			}
-			return s.secret, nil
-		},
+		s.keyFunc,
+		jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}),
 	)
+
 	if err != nil {
-		if errors.Is(err, jwt.ErrTokenExpired) {
-			return nil, ErrExpiredToken
-		}
-		return nil, ErrInvalidToken
+		return nil, mapJWTError(err)
 	}
 
 	claims, ok := token.Claims.(*RefreshClaims)
 	if !ok || !token.Valid {
 		return nil, ErrInvalidToken
 	}
+
+	if claims.TokenType != TokenTypeRefresh {
+		return nil, ErrInvalidType
+	}
+
 	return claims, nil
+}
+
+func (s *Service) keyFunc(*jwt.Token) (interface{}, error) {
+	return s.secret, nil
+}
+
+func mapJWTError(err error) error {
+	switch {
+	case errors.Is(err, jwt.ErrTokenExpired):
+		return ErrExpiredToken
+
+	case errors.Is(err, jwt.ErrTokenMalformed):
+		return ErrMalformedToken
+
+	default:
+		return ErrInvalidToken
+	}
 }
