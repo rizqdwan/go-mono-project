@@ -23,6 +23,10 @@ A monolithic RESTful API for project monitoring.
 - JWT Authentication
 - CRUD management such as user, project, and app
 
+## Plan
+- Notification (SSE)
+- Redis Cache
+
 ## Database Migration
 
 All database migration is in `migrations` folder.
